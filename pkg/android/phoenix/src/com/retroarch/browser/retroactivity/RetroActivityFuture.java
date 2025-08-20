@@ -63,6 +63,63 @@ public final class RetroActivityFuture extends RetroActivityCamera {
   }
 
   @Override
+  public void onNewIntent(Intent intent) {
+    Log.i("RetroArch", "[RetroActivityFuture] onNewIntent received");
+    
+    // Check if this intent contains game launch parameters
+    String newRom = intent.getStringExtra("ROM");
+    String newCore = intent.getStringExtra("LIBRETRO");
+    
+    // Get current intent parameters for comparison
+    Intent currentIntent = getIntent();
+    String currentRom = currentIntent != null ? currentIntent.getStringExtra("ROM") : null;
+    String currentCore = currentIntent != null ? currentIntent.getStringExtra("LIBRETRO") : null;
+    
+    // Check if we're trying to launch different content
+    boolean isDifferentContent = false;
+    if (newRom != null && !newRom.equals(currentRom)) {
+      isDifferentContent = true;
+      Log.i("RetroArch", "[RetroActivityFuture] Different ROM detected - Current: " + currentRom + ", New: " + newRom);
+    }
+    if (newCore != null && !newCore.equals(currentCore)) {
+      isDifferentContent = true;
+      Log.i("RetroArch", "[RetroActivityFuture] Different core detected - Current: " + currentCore + ", New: " + newCore);
+    }
+    
+    if (isDifferentContent) {
+      Log.i("RetroArch", "[RetroActivityFuture] Switching to new content...");
+      
+      // Graceful restart - finish current activity and start fresh
+      // This is the safest approach to avoid crashes
+      performGracefulRestart(intent);
+    } else {
+      // Same content, just bring to foreground
+      Log.i("RetroArch", "[RetroActivityFuture] Same content, resuming...");
+      super.onNewIntent(intent);
+      setIntent(intent);
+    }
+  }
+  
+  private void performGracefulRestart(Intent newIntent) {
+    Log.i("RetroArch", "[RetroActivityFuture] Performing graceful restart");
+    
+    // Schedule the restart
+    mHandler.postDelayed(new Runnable() {
+      @Override
+      public void run() {
+        // Finish current activity
+        finish();
+        
+        // Start fresh with new intent
+        Intent restartIntent = new Intent(newIntent);
+        restartIntent.setClass(RetroActivityFuture.this, RetroActivityFuture.class);
+        restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(restartIntent);
+      }
+    }, 100); // Small delay to ensure proper cleanup
+  }
+
+  @Override
   public void onResume() {
     super.onResume();
 
