@@ -146,6 +146,7 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
     if (hasFocus) {
       // Detect HDR capabilities when window gains focus
+      Log.i("RetroArch", "Window gained focus - detecting HDR capabilities");
       detectHdrCapabilities();
     }
 
@@ -251,9 +252,11 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
   // HDR display capability detection
   public void detectHdrCapabilities() {
+    Log.i("RetroArch", "detectHdrCapabilities() called - API level: " + Build.VERSION.SDK_INT);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       try {
         Display display = getWindowManager().getDefaultDisplay();
+        Log.i("RetroArch", "Got display object: " + display);
         boolean hdrSupported = false;
         float maxLuminance = 100.0f;
         float minLuminance = 0.0f;
@@ -261,6 +264,7 @@ public final class RetroActivityFuture extends RetroActivityCamera {
         // Check HDR support for API 24+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
           hdrSupported = display.isHdr();
+          Log.i("RetroArch", "display.isHdr() returned: " + hdrSupported);
         }
 
         // Get HDR capabilities for API 24+
