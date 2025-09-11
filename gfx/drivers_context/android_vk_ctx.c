@@ -33,10 +33,6 @@
 #include "../../verbosity.h"
 #include "../../configuration.h"
 
-#ifdef ANDROID
-#include "../../frontend/drivers/platform_unix.h"
-#endif
-
 typedef struct
 {
    gfx_ctx_vulkan_data_t vk;

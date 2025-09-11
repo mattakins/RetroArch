@@ -144,6 +144,11 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
     mHandlerSendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus);
 
+    if (hasFocus) {
+      // Detect HDR capabilities when window gains focus
+      detectHdrCapabilities();
+    }
+
     try {
       ConfigFile configFile = new ConfigFile(UserPreferences.getDefaultConfigPath(this));
       if (configFile.getBoolean("input_auto_mouse_grab")) {
@@ -281,15 +286,6 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     } else {
       // Pre-API 24: No HDR support
       nativeSetHdrCapabilities(false, 100.0f, 0.0f);
-    }
-  }
-
-  @Override
-  public void onWindowFocusChanged(boolean hasFocus) {
-    super.onWindowFocusChanged(hasFocus);
-    if (hasFocus) {
-      // Detect HDR capabilities when window gains focus
-      detectHdrCapabilities();
     }
   }
 }
