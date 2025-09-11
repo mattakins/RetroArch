@@ -47,6 +47,11 @@
 #include "../common/vulkan_common.h"
 
 #include "../../configuration.h"
+
+#ifdef ANDROID
+#include "../../frontend/drivers/platform_unix.h"
+#endif
+
 #ifdef HAVE_REWIND
 #include "../../state_manager.h"
 #endif
@@ -2997,6 +3002,17 @@ static void vulkan_set_hdr_max_nits(void* data, float max_nits)
 {
    vk_t *vk                            = (vk_t*)data;
    vulkan_hdr_uniform_t* mapped_ubo    = (vulkan_hdr_uniform_t*)vk->hdr.ubo.mapped;
+
+#ifdef ANDROID
+   /* On Android, clamp max nits to display capability */
+   float display_max_nits = android_display_get_max_luminance();
+   if (max_nits > display_max_nits)
+   {
+      RARCH_LOG("[Vulkan HDR] Clamping max nits from %.1f to %.1f (display limit)\n", 
+                max_nits, display_max_nits);
+      max_nits = display_max_nits;
+   }
+#endif
 
    vk->hdr.max_output_nits             = max_nits;
    mapped_ubo->max_nits                = max_nits;

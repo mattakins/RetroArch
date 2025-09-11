@@ -4,6 +4,7 @@ import android.util.Log;
 import android.view.PointerIcon;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.Display;
 import android.content.Intent;
 import android.content.Context;
 import android.hardware.input.InputManager;
@@ -237,6 +238,58 @@ public final class RetroActivityFuture extends RetroActivityCamera {
       } catch (Exception e) {
         Log.w("[attemptTogglePointerIcon] exception thrown:", e.getMessage());
       }
+    }
+  }
+
+  // Native method declarations for HDR support
+  private native void nativeSetHdrCapabilities(boolean hdrSupported, float maxLuminance, float minLuminance);
+
+  // HDR display capability detection
+  public void detectHdrCapabilities() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      try {
+        Display display = getWindowManager().getDefaultDisplay();
+        boolean hdrSupported = false;
+        float maxLuminance = 100.0f;
+        float minLuminance = 0.0f;
+
+        // Check HDR support for API 24+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+          hdrSupported = display.isHdr();
+        }
+
+        // Get HDR capabilities for API 24+
+        if (hdrSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+          Display.HdrCapabilities hdrCapabilities = display.getHdrCapabilities();
+          if (hdrCapabilities != null) {
+            maxLuminance = hdrCapabilities.getDesiredMaxLuminance();
+            minLuminance = hdrCapabilities.getDesiredMinLuminance();
+          }
+        }
+
+        // Pass HDR capabilities to native code
+        nativeSetHdrCapabilities(hdrSupported, maxLuminance, minLuminance);
+        
+        Log.i("RetroArch", "HDR Detection: supported=" + hdrSupported + 
+              ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);
+              
+      } catch (Exception e) {
+        Log.w("RetroArch", "HDR detection failed: " + e.getMessage());
+        // Fallback to no HDR support
+        nativeSetHdrCapabilities(false, 100.0f, 0.0f);
+      }
+    } else {
+      // Pre-API 24: No HDR support
+      nativeSetHdrCapabilities(false, 100.0f, 0.0f);
+    }
+  }
+
+  @Override
+  public void onWindowFocusChanged(boolean hasFocus) {
+    super.onWindowFocusChanged(hasFocus);
+    if (hasFocus) {
+      // Detect HDR capabilities when window gains focus
+      detectHdrCapabilities();
     }
   }
 }

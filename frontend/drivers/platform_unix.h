@@ -369,6 +369,11 @@ extern struct android_app *g_android;
 
 bool is_screen_reader_enabled(void);
 
+/* HDR display capability functions */
+bool android_display_supports_hdr(void);
+float android_display_get_max_luminance(void);
+float android_display_get_min_luminance(void);
+
 #endif
 
 #endif

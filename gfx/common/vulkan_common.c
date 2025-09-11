@@ -39,6 +39,10 @@
 #include "../../verbosity.h"
 #include "../../configuration.h"
 
+#ifdef ANDROID
+#include "../../frontend/drivers/platform_unix.h"
+#endif
+
 #define VENDOR_ID_AMD 0x1002
 #define VENDOR_ID_NV 0x10DE
 #define VENDOR_ID_INTEL 0x8086
@@ -2130,7 +2134,18 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
 #ifdef VULKAN_HDR_SWAPCHAIN
       if (vk->context.flags & VK_CTX_FLAG_HDR_SUPPORT)
       {
-         if (settings->bools.video_hdr_enable)
+         bool hdr_capable = true;
+         
+#ifdef ANDROID
+         /* On Android, also check if the display supports HDR */
+         hdr_capable = android_display_supports_hdr();
+         if (!hdr_capable)
+         {
+            RARCH_LOG("[Vulkan] HDR disabled: Android display does not support HDR\n");
+         }
+#endif
+         
+         if (settings->bools.video_hdr_enable && hdr_capable)
             vk->context.flags |=  VK_CTX_FLAG_HDR_ENABLE;
          else
             vk->context.flags &= ~VK_CTX_FLAG_HDR_ENABLE;

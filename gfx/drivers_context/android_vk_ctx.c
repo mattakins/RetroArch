@@ -33,18 +33,37 @@
 #include "../../verbosity.h"
 #include "../../configuration.h"
 
+#ifdef ANDROID
+#include "../../frontend/drivers/platform_unix.h"
+#endif
+
 typedef struct
 {
    gfx_ctx_vulkan_data_t vk;
    unsigned width;
    unsigned height;
    int swap_interval;
+   bool hdr_enable;
 } android_ctx_data_vk_t;
 
 /* FORWARD DECLARATION */
 bool android_display_get_metrics(void *data,
 	enum display_metric_types type, float *value);
 bool android_display_has_focus(void *data);
+
+#ifdef ANDROID
+/* Check if HDR should be enabled based on display capability and settings */
+static bool android_vulkan_should_enable_hdr(void)
+{
+   settings_t *settings = config_get_ptr();
+   
+   /* Check if HDR is enabled in settings and display supports it */
+   if (!settings || !settings->bools.video_hdr_enable)
+      return false;
+      
+   return android_display_supports_hdr();
+}
+#endif
 
 static void android_gfx_ctx_vk_destroy(void *data)
 {
@@ -159,8 +178,27 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
 {
    struct android_app *android_app = (struct android_app*)g_android;
    android_ctx_data_vk_t *and      = (android_ctx_data_vk_t*)data;
+   
    and->width                      = ANativeWindow_getWidth(android_app->window);
    and->height                     = ANativeWindow_getHeight(android_app->window);
+   
+#ifdef ANDROID
+   /* Update HDR enable state based on current settings and display capability */
+   and->hdr_enable = android_vulkan_should_enable_hdr();
+   
+   if (and->hdr_enable)
+   {
+      RARCH_LOG("[Android Vulkan] HDR enabled - max luminance: %.1f nits\n", 
+                android_display_get_max_luminance());
+   }
+   else
+   {
+      RARCH_LOG("[Android Vulkan] HDR disabled\n");
+   }
+#else
+   and->hdr_enable = false;
+#endif
+
    if (!vulkan_surface_create(&and->vk, VULKAN_WSI_ANDROID,
             NULL, android_app->window,
             and->width, and->height, and->swap_interval))
@@ -168,6 +206,7 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
       RARCH_ERR("[Vulkan] Failed to create surface.\n");
       return false;
    }
+   
    RARCH_LOG("[Vulkan] Native window size: %ux%u.\n",
          and->width, and->height);
    return true;

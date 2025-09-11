@@ -118,6 +118,11 @@ static char app_dir[DIR_MAX_LENGTH];
 unsigned storage_permissions             = 0;
 struct android_app *g_android            = NULL;
 static uint8_t g_platform_android_flags  = 0;
+
+/* HDR display capabilities */
+static bool android_hdr_supported        = false;
+static float android_hdr_max_luminance   = 100.0f;
+static float android_hdr_min_luminance   = 0.0f;
 #else
 #define PROC_APM_PATH                    "/proc/apm"
 #define PROC_ACPI_BATTERY_PATH           "/proc/acpi/battery"
@@ -3039,6 +3044,37 @@ static bool accessibility_speak_android(int speed,
             (*env)->NewStringUTF(env, speak_text));
 
    return true;
+}
+
+/* JNI function to receive HDR capabilities from Java */
+JNIEXPORT void JNICALL
+Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabilities(
+    JNIEnv *env, jobject obj, jboolean hdrSupported, jfloat maxLuminance, jfloat minLuminance)
+{
+   android_hdr_supported      = (hdrSupported == JNI_TRUE);
+   android_hdr_max_luminance  = (float)maxLuminance;
+   android_hdr_min_luminance  = (float)minLuminance;
+   
+   RARCH_LOG("[Android HDR] Capabilities updated: supported=%s, max=%.1f nits, min=%.3f nits\n",
+       android_hdr_supported ? "true" : "false", 
+       android_hdr_max_luminance, 
+       android_hdr_min_luminance);
+}
+
+/* Getter functions for HDR capabilities */
+bool android_display_supports_hdr(void)
+{
+   return android_hdr_supported;
+}
+
+float android_display_get_max_luminance(void)
+{
+   return android_hdr_max_luminance;
+}
+
+float android_display_get_min_luminance(void)
+{
+   return android_hdr_min_luminance;
 }
 #endif
 
