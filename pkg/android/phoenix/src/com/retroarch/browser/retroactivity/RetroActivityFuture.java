@@ -67,6 +67,10 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
     // If QUITFOCUS parameter is provided then enable that Retroarch quits when focus is lost
     quitfocus = getIntent().hasExtra("QUITFOCUS");
+    
+    // Detect HDR capabilities during onCreate
+    Log.i("RetroArch", "onCreate completed - detecting HDR capabilities");
+    detectHdrCapabilities();
   }
 
   @Override
@@ -124,10 +128,6 @@ public final class RetroActivityFuture extends RetroActivityCamera {
         Log.w("Key doesn't exist yet.", e.getMessage());
       }
     }
-    
-    // Detect HDR capabilities during onCreate
-    Log.i("RetroArch", "onCreate completed - detecting HDR capabilities");
-    detectHdrCapabilities();
   }
 
   @Override
