@@ -2134,10 +2134,13 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
 #ifdef VULKAN_HDR_SWAPCHAIN
 #ifdef ANDROID
       /* On Android, check native HDR support instead of Vulkan extension */
-      if (android_display_supports_hdr())
+      bool android_hdr_detected = android_display_supports_hdr();
+      RARCH_LOG("[Vulkan] Android HDR detection result: %s\n", android_hdr_detected ? "supported" : "not supported");
+      if (android_hdr_detected)
       {
          vk->context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
          video_driver_set_hdr_support();
+         RARCH_LOG("[Vulkan] Android HDR menu enabled\n");
       }
 #endif
       if (vk->context.flags & VK_CTX_FLAG_HDR_SUPPORT)
