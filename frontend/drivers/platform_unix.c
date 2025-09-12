@@ -3066,9 +3066,7 @@ Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabil
 /* Getter functions for HDR capabilities */
 bool android_display_supports_hdr(void)
 {
-   /* For now, assume HDR support on Android to match desktop behavior */
-   /* Desktop shows HDR menu when Vulkan driver supports HDR formats */
-   return true;
+   return android_hdr_supported;
 }
 
 float android_display_get_max_luminance(void)
