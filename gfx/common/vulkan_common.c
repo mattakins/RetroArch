@@ -2161,7 +2161,11 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
          else
             vk->context.flags &= ~VK_CTX_FLAG_HDR_ENABLE;
 
+#ifndef ANDROID
+         /* On desktop, unset HDR support before checking Vulkan formats */
+         /* On Android, we use native HDR detection so don't clear the flag */
          video_driver_unset_hdr_support();
+#endif
 
          for (i = 0; i < format_count; i++)
          {
