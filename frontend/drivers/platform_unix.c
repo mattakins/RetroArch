@@ -3060,36 +3060,29 @@ Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabil
        android_hdr_max_luminance, 
        android_hdr_min_luminance);
    
-   /* Auto-enable HDR setting when HDR is detected */
-   if (android_hdr_supported)
-   {
-      settings_t *settings = config_get_ptr();
-      if (settings && !settings->bools.video_hdr_enable)
-      {
-         settings->bools.video_hdr_enable = true;
-         settings->flags |= SETTINGS_FLG_MODIFIED;
-         RARCH_LOG("[Android HDR] Auto-enabled HDR setting due to display capability\n");
-         
-         /* Force save configuration immediately to ensure Vulkan driver sees the setting */
-         command_event(CMD_EVENT_MENU_SAVE_CURRENT_CONFIG, NULL);
-      }
-   }
+   /* HDR detection complete - user can manually enable in settings if desired */
 }
 
 /* Getter functions for HDR capabilities */
 bool android_display_supports_hdr(void)
 {
-   return android_hdr_supported;
+   /* For now, assume HDR support on Android to match desktop behavior */
+   /* Desktop shows HDR menu when Vulkan driver supports HDR formats */
+   return true;
 }
 
 float android_display_get_max_luminance(void)
 {
-   return android_hdr_max_luminance;
+   /* Return reasonable default for modern Android HDR displays */
+   /* JNI bridge will update this if working, otherwise use sensible default */
+   return android_hdr_max_luminance > 100.0f ? android_hdr_max_luminance : 400.0f;
 }
 
 float android_display_get_min_luminance(void)
 {
-   return android_hdr_min_luminance;
+   /* Return reasonable default for modern Android HDR displays */  
+   /* JNI bridge will update this if working, otherwise use sensible default */
+   return android_hdr_min_luminance > 0.0f ? android_hdr_min_luminance : 0.3f;
 }
 #endif
 
