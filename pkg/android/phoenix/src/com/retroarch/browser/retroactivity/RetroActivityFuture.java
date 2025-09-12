@@ -58,8 +58,10 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    Log.i("RetroArch", "onCreate started");
     super.onCreate(savedInstanceState);
     
+    Log.i("RetroArch", "onCreate after super call");
     isRunning = true;
     mDecorView = getWindow().getDecorView();
 
