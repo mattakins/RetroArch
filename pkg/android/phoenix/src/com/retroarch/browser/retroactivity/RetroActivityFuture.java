@@ -277,6 +277,8 @@ public final class RetroActivityFuture extends RetroActivityCamera {
         }
 
         // Pass HDR capabilities to native code
+        Log.i("RetroArch", "Calling nativeSetHdrCapabilities with: supported=" + hdrSupported + 
+              ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);
         nativeSetHdrCapabilities(hdrSupported, maxLuminance, minLuminance);
         
         Log.i("RetroArch", "HDR Detection: supported=" + hdrSupported + 
