@@ -2132,6 +2132,14 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
       }
 
 #ifdef VULKAN_HDR_SWAPCHAIN
+#ifdef ANDROID
+      /* On Android, check native HDR support instead of Vulkan extension */
+      if (android_display_supports_hdr())
+      {
+         vk->context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
+         video_driver_set_hdr_support();
+      }
+#endif
       if (vk->context.flags & VK_CTX_FLAG_HDR_SUPPORT)
       {
          bool hdr_capable = true;
@@ -2158,20 +2166,8 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
                   && (formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT))
             {
                format = formats[i];
-#ifdef ANDROID
-               /* On Android, only enable HDR menu if display supports it */
-               if (hdr_capable)
-               {
-                  video_driver_set_hdr_support();
-               }
-               else
-               {
-                  RARCH_LOG("[Vulkan] HDR format available but Android display does not support HDR\n");
-               }
-#else
-               /* Desktop: show HDR menu if Vulkan format is available */
+               /* Show HDR menu if Vulkan format is available (matches desktop behavior) */
                video_driver_set_hdr_support();
-#endif
                break;
             }
          }
