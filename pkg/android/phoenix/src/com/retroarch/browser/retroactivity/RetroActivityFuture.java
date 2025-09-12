@@ -279,7 +279,14 @@ public final class RetroActivityFuture extends RetroActivityCamera {
         // Pass HDR capabilities to native code
         Log.i("RetroArch", "Calling nativeSetHdrCapabilities with: supported=" + hdrSupported + 
               ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);
-        nativeSetHdrCapabilities(hdrSupported, maxLuminance, minLuminance);
+        try {
+          nativeSetHdrCapabilities(hdrSupported, maxLuminance, minLuminance);
+          Log.i("RetroArch", "nativeSetHdrCapabilities call completed successfully");
+        } catch (UnsatisfiedLinkError e) {
+          Log.e("RetroArch", "JNI method not found: " + e.getMessage());
+        } catch (Exception e) {
+          Log.e("RetroArch", "JNI call failed: " + e.getMessage());
+        }
         
         Log.i("RetroArch", "HDR Detection: supported=" + hdrSupported + 
               ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);

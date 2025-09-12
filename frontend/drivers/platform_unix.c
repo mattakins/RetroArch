@@ -3060,6 +3060,13 @@ Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabil
        android_hdr_max_luminance, 
        android_hdr_min_luminance);
    
+   /* Add Android logcat output for debugging */
+   __android_log_print(ANDROID_LOG_INFO, "RetroArch", 
+       "[Android HDR] Native: Capabilities updated: supported=%s, max=%.1f nits, min=%.3f nits",
+       android_hdr_supported ? "true" : "false", 
+       android_hdr_max_luminance, 
+       android_hdr_min_luminance);
+   
    /* Auto-enable HDR setting when HDR is detected */
    if (android_hdr_supported)
    {
@@ -3069,6 +3076,8 @@ Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabil
          settings->bools.video_hdr_enable = true;
          settings->flags |= SETTINGS_FLG_MODIFIED;
          RARCH_LOG("[Android HDR] Auto-enabled HDR setting due to display capability\n");
+         __android_log_print(ANDROID_LOG_INFO, "RetroArch", 
+             "[Android HDR] Native: Auto-enabled HDR setting due to display capability");
       }
    }
 }
