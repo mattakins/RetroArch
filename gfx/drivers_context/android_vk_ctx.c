@@ -194,7 +194,14 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    and->height                     = ANativeWindow_getHeight(android_app->window);
    
 #ifdef ANDROID
-   /* Update HDR enable state based on current settings and display capability */
+   /* Always set HDR support flag if hardware supports it (for menu visibility) */
+   if (android_display_supports_hdr())
+   {
+      and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
+      video_driver_set_hdr_support();
+   }
+   
+   /* Separately check if HDR should be enabled for actual rendering */
    and->hdr_enable = android_vulkan_should_enable_hdr();
    
    if (and->hdr_enable)
