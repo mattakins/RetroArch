@@ -10103,6 +10103,13 @@ unsigned menu_displaylist_build_list(
                            PARSE_ONLY_BOOL, false) == 0)
                      count++;
                }
+#ifdef ANDROID
+               /* Show HDR display information on Android */
+               if (MENU_DISPLAYLIST_PARSE_SETTINGS_ENUM(list,
+                        MENU_ENUM_LABEL_VIDEO_HDR_DISPLAY_INFO,
+                        PARSE_ONLY_UINT, false) == 0)
+                  count++;
+#endif
             }
          }
          break;

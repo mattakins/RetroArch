@@ -2728,6 +2728,14 @@ MSG_HASH(
    MENU_ENUM_SUBLABEL_VIDEO_HDR_EXPAND_GAMUT,
    "Once the color space is converted to linear space, decide whether we should use an expanded colour gamut to get to HDR10."
    )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_VIDEO_HDR_DISPLAY_INFO,
+   "HDR Display Information"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_VIDEO_HDR_DISPLAY_INFO,
+   "Shows HDR capabilities and specifications of the connected display."
+   )
 
 /* Settings > Video > Synchronization */
 

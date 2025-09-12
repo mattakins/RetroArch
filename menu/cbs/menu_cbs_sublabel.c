@@ -250,6 +250,32 @@ DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_hdr_paper_white_nits,      MENU_ENUM
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_hdr_max_nits,      MENU_ENUM_SUBLABEL_VIDEO_HDR_MAX_NITS)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_hdr_contrast,      MENU_ENUM_SUBLABEL_VIDEO_HDR_CONTRAST)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_hdr_expand_gamut,      MENU_ENUM_SUBLABEL_VIDEO_HDR_EXPAND_GAMUT)
+
+#ifdef ANDROID
+/* Custom HDR display info function */
+static int action_bind_sublabel_hdr_display_info(file_list_t *list,
+      unsigned type, unsigned i, const char *label, const char *path,
+      char *s, size_t len)
+{
+   bool hdr_supported = android_display_supports_hdr();
+   float max_nits     = android_display_get_max_luminance();
+   float min_nits     = android_display_get_min_luminance();
+   
+   if (hdr_supported)
+   {
+      snprintf(s, len, 
+         "HDR Support: Yes\nMax Luminance: %.1f nits\nMin Luminance: %.3f nits\nFormats: HDR10, HLG, Dolby Vision",
+         max_nits, min_nits);
+   }
+   else
+   {
+      strlcpy(s, "HDR Support: No\nDisplay does not support HDR content.", len);
+   }
+   
+   return 0;
+}
+#endif
+
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_crt_switchres_super,       MENU_ENUM_SUBLABEL_CRT_SWITCH_RESOLUTION_SUPER)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_crt_switchres_x_axis_centering,       MENU_ENUM_SUBLABEL_CRT_SWITCH_X_AXIS_CENTERING)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_crt_switchres_porch_adjust,       MENU_ENUM_SUBLABEL_CRT_SWITCH_PORCH_ADJUST)
@@ -5178,6 +5204,11 @@ int menu_cbs_init_bind_sublabel(menu_file_list_cbs_t *cbs,
          case MENU_ENUM_LABEL_VIDEO_HDR_EXPAND_GAMUT:
             BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_hdr_expand_gamut);
             break;
+#ifdef ANDROID
+         case MENU_ENUM_LABEL_VIDEO_HDR_DISPLAY_INFO:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_hdr_display_info);
+            break;
+#endif
          case MENU_ENUM_LABEL_VIDEO_OUTPUT_SETTINGS:
             BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_video_output_settings_list);
             break;
