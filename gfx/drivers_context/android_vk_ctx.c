@@ -32,6 +32,7 @@
 #include "../../frontend/drivers/platform_unix.h"
 #include "../../verbosity.h"
 #include "../../configuration.h"
+#include "../video_driver.h"
 
 typedef struct
 {
@@ -90,6 +91,20 @@ static void *android_gfx_ctx_vk_init(void *video_driver)
       android_gfx_ctx_vk_destroy(and);
       return NULL;
    }
+
+#ifdef ANDROID
+   /* Set HDR support early so menu system can detect it during initialization */
+   if (android_display_supports_hdr())
+   {
+      and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
+      video_driver_set_hdr_support();
+      RARCH_LOG("[Android Vulkan] HDR support enabled during context init\n");
+   }
+   else
+   {
+      RARCH_LOG("[Android Vulkan] HDR not supported by display\n");
+   }
+#endif
 
    slock_lock(android_app->mutex);
    if (!android_app->window)
