@@ -122,6 +122,10 @@ public final class RetroActivityFuture extends RetroActivityCamera {
         Log.w("Key doesn't exist yet.", e.getMessage());
       }
     }
+    
+    // Detect HDR capabilities during onCreate
+    Log.i("RetroArch", "onCreate completed - detecting HDR capabilities");
+    detectHdrCapabilities();
   }
 
   @Override
@@ -143,12 +147,6 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     super.onWindowFocusChanged(hasFocus);
 
     mHandlerSendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus);
-
-    if (hasFocus) {
-      // Detect HDR capabilities when window gains focus
-      Log.i("RetroArch", "Window gained focus - detecting HDR capabilities");
-      detectHdrCapabilities();
-    }
 
     try {
       ConfigFile configFile = new ConfigFile(UserPreferences.getDefaultConfigPath(this));
