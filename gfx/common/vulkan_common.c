@@ -2133,14 +2133,37 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
 
 #ifdef VULKAN_HDR_SWAPCHAIN
 #ifdef ANDROID
-      /* On Android, check native HDR support instead of Vulkan extension */
-      bool android_hdr_detected = android_display_supports_hdr();
-      RARCH_LOG("[Vulkan] Android HDR detection result: %s\n", android_hdr_detected ? "supported" : "not supported");
-      if (android_hdr_detected)
+      /* Log all available surface formats for debugging */
+      RARCH_LOG("[Vulkan Android] Available surface formats (%u total):\n", format_count);
+      for (i = 0; i < format_count; i++)
+      {
+         RARCH_LOG("  Format[%u]: format=0x%x, colorSpace=0x%x\n", i, formats[i].format, formats[i].colorSpace);
+      }
+      
+      /* Check if Android supports VK_COLOR_SPACE_HDR10_ST2084_EXT like desktop */
+      bool android_vulkan_hdr = false;
+      for (i = 0; i < format_count; i++)
+      {
+         if ((formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) &&
+             (formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
+              formats[i].format == VK_FORMAT_A2R10G10B10_UNORM_PACK32))
+         {
+            android_vulkan_hdr = true;
+            RARCH_LOG("[Vulkan Android] Found HDR10 ST2084 format: 0x%x\n", formats[i].format);
+            break;
+         }
+      }
+      
+      /* Use Vulkan-detected HDR support instead of system properties */
+      if (android_vulkan_hdr)
       {
          vk->context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
          video_driver_set_hdr_support();
-         RARCH_LOG("[Vulkan] Android HDR menu enabled\n");
+         RARCH_LOG("[Vulkan Android] HDR support enabled via Vulkan detection\n");
+      }
+      else
+      {
+         RARCH_LOG("[Vulkan Android] No HDR10 ST2084 format found, HDR disabled\n");
       }
 #endif
       if (vk->context.flags & VK_CTX_FLAG_HDR_SUPPORT)
@@ -2148,12 +2171,8 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
          bool hdr_capable = true;
          
 #ifdef ANDROID
-         /* On Android, also check if the display supports HDR */
-         hdr_capable = android_display_supports_hdr();
-         if (!hdr_capable)
-         {
-            RARCH_LOG("[Vulkan] HDR disabled: Android display does not support HDR\n");
-         }
+         /* On Android, HDR capability already verified by Vulkan format detection above */
+         RARCH_LOG("[Vulkan Android] HDR format selection - capability verified\n");
 #endif
          
          if (settings->bools.video_hdr_enable)
