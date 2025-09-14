@@ -68,9 +68,6 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     // If QUITFOCUS parameter is provided then enable that Retroarch quits when focus is lost
     quitfocus = getIntent().hasExtra("QUITFOCUS");
     
-    // Detect HDR capabilities during onCreate
-    Log.i("RetroArch", "onCreate completed - detecting HDR capabilities");
-    detectHdrCapabilities();
   }
 
   @Override
@@ -247,58 +244,4 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     }
   }
 
-  // Native method declarations for HDR support
-  private native void nativeSetHdrCapabilities(boolean hdrSupported, float maxLuminance, float minLuminance);
-
-  // HDR display capability detection
-  public void detectHdrCapabilities() {
-    Log.i("RetroArch", "detectHdrCapabilities() called - API level: " + Build.VERSION.SDK_INT);
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      try {
-        Display display = getWindowManager().getDefaultDisplay();
-        Log.i("RetroArch", "Got display object: " + display);
-        boolean hdrSupported = false;
-        float maxLuminance = 100.0f;
-        float minLuminance = 0.0f;
-
-        // Check HDR support for API 24+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-          hdrSupported = display.isHdr();
-          Log.i("RetroArch", "display.isHdr() returned: " + hdrSupported);
-        }
-
-        // Get HDR capabilities for API 24+
-        if (hdrSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-          Display.HdrCapabilities hdrCapabilities = display.getHdrCapabilities();
-          if (hdrCapabilities != null) {
-            maxLuminance = hdrCapabilities.getDesiredMaxLuminance();
-            minLuminance = hdrCapabilities.getDesiredMinLuminance();
-          }
-        }
-
-        // Pass HDR capabilities to native code
-        Log.i("RetroArch", "Calling nativeSetHdrCapabilities with: supported=" + hdrSupported + 
-              ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);
-        try {
-          nativeSetHdrCapabilities(hdrSupported, maxLuminance, minLuminance);
-          Log.i("RetroArch", "nativeSetHdrCapabilities call completed successfully");
-        } catch (UnsatisfiedLinkError e) {
-          Log.e("RetroArch", "JNI method not found: " + e.getMessage());
-        } catch (Exception e) {
-          Log.e("RetroArch", "JNI call failed: " + e.getMessage());
-        }
-        
-        Log.i("RetroArch", "HDR Detection: supported=" + hdrSupported + 
-              ", maxLuminance=" + maxLuminance + ", minLuminance=" + minLuminance);
-              
-      } catch (Exception e) {
-        Log.w("RetroArch", "HDR detection failed: " + e.getMessage());
-        // Fallback to no HDR support
-        nativeSetHdrCapabilities(false, 100.0f, 0.0f);
-      }
-    } else {
-      // Pre-API 24: No HDR support
-      nativeSetHdrCapabilities(false, 100.0f, 0.0f);
-    }
-  }
 }

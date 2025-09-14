@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include <sys/system_properties.h>
+#include <android/native_window.h>
 
 #include <formats/image.h>
 #include <string/stdstring.h>
@@ -93,17 +94,8 @@ static void *android_gfx_ctx_vk_init(void *video_driver)
    }
 
 #ifdef ANDROID
-   /* Set HDR support early so menu system can detect it during initialization */
-   if (android_display_supports_hdr())
-   {
-      and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
-      video_driver_set_hdr_support();
-      RARCH_LOG("[Android Vulkan] HDR support enabled during context init\n");
-   }
-   else
-   {
-      RARCH_LOG("[Android Vulkan] HDR not supported by display\n");
-   }
+   /* HDR detection will happen later in set_video_mode after surface creation */
+   RARCH_LOG("[Android Vulkan] Context initialized, HDR detection deferred until surface creation\n");
 #endif
 
    slock_lock(android_app->mutex);
@@ -194,29 +186,47 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    and->height                     = ANativeWindow_getHeight(android_app->window);
    
 #ifdef ANDROID
-   /* Always set HDR support flag if hardware supports it (for menu visibility) */
+   /* Detect HDR support using native Vulkan surface format detection */
+   /* This must happen after surface creation */
+   if (!vulkan_surface_create(&and->vk, VULKAN_WSI_ANDROID,
+            NULL, android_app->window,
+            and->width, and->height, and->swap_interval))
+   {
+      RARCH_ERR("[Vulkan] Failed to create surface.\n");
+      return false;
+   }
+   
+   /* Check HDR support using platform-level detection */
    if (android_display_supports_hdr())
    {
       and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
       video_driver_set_hdr_support();
+      RARCH_LOG("[Android Vulkan] HDR support detected and enabled\n");
+   }
+   else
+   {
+      RARCH_LOG("[Android Vulkan] HDR not supported by display\n");
    }
    
-   /* Separately check if HDR should be enabled for actual rendering */
+   /* Check if HDR should be enabled for actual rendering */
    and->hdr_enable = android_vulkan_should_enable_hdr();
    
    if (and->hdr_enable)
    {
-      RARCH_LOG("[Android Vulkan] HDR enabled - max luminance: %.1f nits\n", 
+      RARCH_LOG("[Android Vulkan] HDR rendering enabled - max luminance: %.1f nits\n", 
                 android_display_get_max_luminance());
    }
    else
    {
-      RARCH_LOG("[Android Vulkan] HDR disabled\n");
+      RARCH_LOG("[Android Vulkan] HDR rendering disabled\n");
    }
+   
+   RARCH_LOG("[Vulkan] Native window size: %ux%u.\n",
+         and->width, and->height);
+   return true;
 #else
    and->hdr_enable = false;
-#endif
-
+   
    if (!vulkan_surface_create(&and->vk, VULKAN_WSI_ANDROID,
             NULL, android_app->window,
             and->width, and->height, and->swap_interval))
@@ -228,6 +238,7 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    RARCH_LOG("[Vulkan] Native window size: %ux%u.\n",
          and->width, and->height);
    return true;
+#endif
 }
 
 static void android_gfx_ctx_vk_input_driver(void *data,

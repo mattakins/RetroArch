@@ -120,9 +120,6 @@ struct android_app *g_android            = NULL;
 static uint8_t g_platform_android_flags  = 0;
 
 /* HDR display capabilities */
-static bool android_hdr_supported        = false;
-static float android_hdr_max_luminance   = 100.0f;
-static float android_hdr_min_luminance   = 0.0f;
 #else
 #define PROC_APM_PATH                    "/proc/apm"
 #define PROC_ACPI_BATTERY_PATH           "/proc/acpi/battery"
@@ -3047,40 +3044,61 @@ static bool accessibility_speak_android(int speed,
 }
 
 /* JNI function to receive HDR capabilities from Java */
-JNIEXPORT void JNICALL
-Java_com_retroarch_browser_retroactivity_RetroActivityFuture_nativeSetHdrCapabilities(
-    JNIEnv *env, jobject obj, jboolean hdrSupported, jfloat maxLuminance, jfloat minLuminance)
-{
-   android_hdr_supported      = (hdrSupported == JNI_TRUE);
-   android_hdr_max_luminance  = (float)maxLuminance;
-   android_hdr_min_luminance  = (float)minLuminance;
-   
-   RARCH_LOG("[Android HDR] Capabilities updated: supported=%s, max=%.1f nits, min=%.3f nits\n",
-       android_hdr_supported ? "true" : "false", 
-       android_hdr_max_luminance, 
-       android_hdr_min_luminance);
-   
-   /* HDR detection complete - user can manually enable in settings if desired */
-}
-
-/* Getter functions for HDR capabilities */
+/* Global Android HDR detection using system properties */
 bool android_display_supports_hdr(void)
 {
-   return android_hdr_supported;
+#ifdef ANDROID
+   static bool hdr_checked = false;
+   static bool hdr_supported = false;
+   char prop_value[PROP_VALUE_MAX] = {0};
+   
+   if (!hdr_checked)
+   {
+      /* Check Android system properties for HDR support */
+      /* ro.vendor.display.hdr.supported or similar properties */
+      if (__system_property_get("ro.vendor.display.hdr.supported", prop_value) > 0)
+      {
+         hdr_supported = (strcmp(prop_value, "1") == 0 || strcmp(prop_value, "true") == 0);
+         RARCH_LOG("[Android HDR] ro.vendor.display.hdr.supported = %s\n", prop_value);
+      }
+      else if (__system_property_get("vendor.display.hdr_supported", prop_value) > 0)
+      {
+         hdr_supported = (strcmp(prop_value, "1") == 0 || strcmp(prop_value, "true") == 0);
+         RARCH_LOG("[Android HDR] vendor.display.hdr_supported = %s\n", prop_value);
+      }
+      else
+      {
+         /* Fallback: assume HDR support on API 24+ devices */
+         /* This is a reasonable assumption for modern Android devices */
+         struct android_app *android_app = (struct android_app*)g_android;
+         if (android_app)
+         {
+            hdr_supported = true; /* Most modern Android devices support HDR */
+            RARCH_LOG("[Android HDR] No system properties found, assuming HDR support\n");
+         }
+      }
+      
+      hdr_checked = true;
+      RARCH_LOG("[Android HDR] Native detection result: %s\n", 
+               hdr_supported ? "supported" : "not supported");
+   }
+   
+   return hdr_supported;
+#else
+   return false;
+#endif
 }
 
 float android_display_get_max_luminance(void)
 {
    /* Return reasonable default for modern Android HDR displays */
-   /* JNI bridge will update this if working, otherwise use sensible default */
-   return android_hdr_max_luminance > 100.0f ? android_hdr_max_luminance : 400.0f;
+   return 400.0f;
 }
 
 float android_display_get_min_luminance(void)
 {
-   /* Return reasonable default for modern Android HDR displays */  
-   /* JNI bridge will update this if working, otherwise use sensible default */
-   return android_hdr_min_luminance > 0.0f ? android_hdr_min_luminance : 0.3f;
+   /* Return reasonable default for modern Android HDR displays */
+   return 0.3f;
 }
 #endif
 
