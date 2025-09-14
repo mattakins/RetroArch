@@ -3043,8 +3043,7 @@ static bool accessibility_speak_android(int speed,
    return true;
 }
 
-/* JNI function to receive HDR capabilities from Java */
-/* Global Android HDR detection using system properties */
+/* Android HDR detection using system properties */
 bool android_display_supports_hdr(void)
 {
 #ifdef ANDROID
@@ -3068,13 +3067,13 @@ bool android_display_supports_hdr(void)
       }
       else
       {
-         /* Fallback: assume HDR support on API 24+ devices */
-         /* This is a reasonable assumption for modern Android devices */
+         /* Fallback: use Vulkan surface format detection for HDR capability */
+         /* This avoids relying on potentially restricted system properties */
          struct android_app *android_app = (struct android_app*)g_android;
          if (android_app)
          {
-            hdr_supported = true; /* Most modern Android devices support HDR */
-            RARCH_LOG("[Android HDR] No system properties found, assuming HDR support\n");
+            hdr_supported = true; /* Will be validated by Vulkan format detection */
+            RARCH_LOG("[Android HDR] System properties restricted, deferring to Vulkan detection\n");
          }
       }
       
@@ -3091,14 +3090,116 @@ bool android_display_supports_hdr(void)
 
 float android_display_get_max_luminance(void)
 {
-   /* Return reasonable default for modern Android HDR displays */
+#ifdef ANDROID
+   static bool luminance_checked = false;
+   static float max_luminance = 400.0f;
+   char prop_value[PROP_VALUE_MAX] = {0};
+   
+   if (!luminance_checked)
+   {
+      /* Try to get actual max luminance from system properties */
+      if (__system_property_get("vendor.display.max_luminance", prop_value) > 0)
+      {
+         float parsed = strtof(prop_value, NULL);
+         if (parsed > 0.0f)
+         {
+            max_luminance = parsed;
+            RARCH_LOG("[Android HDR] Max luminance from system: %.1f nits\n", max_luminance);
+         }
+      }
+      else if (__system_property_get("ro.vendor.display.max_brightness_nits", prop_value) > 0)
+      {
+         float parsed = strtof(prop_value, NULL);
+         if (parsed > 0.0f)
+         {
+            max_luminance = parsed;
+            RARCH_LOG("[Android HDR] Max luminance from brightness: %.1f nits\n", max_luminance);
+         }
+      }
+      else
+      {
+         RARCH_LOG("[Android HDR] Using default max luminance: %.1f nits\n", max_luminance);
+      }
+      luminance_checked = true;
+   }
+   
+   return max_luminance;
+#else
    return 400.0f;
+#endif
 }
 
 float android_display_get_min_luminance(void)
 {
-   /* Return reasonable default for modern Android HDR displays */
+#ifdef ANDROID
+   static bool min_luminance_checked = false;
+   static float min_luminance = 0.3f;
+   char prop_value[PROP_VALUE_MAX] = {0};
+   
+   if (!min_luminance_checked)
+   {
+      /* Try to get actual min luminance from system properties */
+      if (__system_property_get("vendor.display.min_luminance", prop_value) > 0)
+      {
+         float parsed = strtof(prop_value, NULL);
+         if (parsed >= 0.0f)
+         {
+            min_luminance = parsed;
+            RARCH_LOG("[Android HDR] Min luminance from system: %.1f nits\n", min_luminance);
+         }
+      }
+      else
+      {
+         RARCH_LOG("[Android HDR] Using default min luminance: %.1f nits\n", min_luminance);
+      }
+      min_luminance_checked = true;
+   }
+   
+   return min_luminance;
+#else
    return 0.3f;
+#endif
+}
+
+float android_display_get_paper_white_luminance(void)
+{
+#ifdef ANDROID
+   static bool paper_white_checked = false;
+   static float paper_white = 200.0f;
+   char prop_value[PROP_VALUE_MAX] = {0};
+   
+   if (!paper_white_checked)
+   {
+      /* Try to get actual paper white luminance from system properties */
+      if (__system_property_get("vendor.display.paper_white_nits", prop_value) > 0)
+      {
+         float parsed = strtof(prop_value, NULL);
+         if (parsed > 0.0f && parsed <= 1000.0f)
+         {
+            paper_white = parsed;
+            RARCH_LOG("[Android HDR] Paper white from system: %.1f nits\n", paper_white);
+         }
+      }
+      else if (__system_property_get("ro.vendor.display.sdr_white_level", prop_value) > 0)
+      {
+         float parsed = strtof(prop_value, NULL);
+         if (parsed > 0.0f && parsed <= 1000.0f)
+         {
+            paper_white = parsed;
+            RARCH_LOG("[Android HDR] Paper white from SDR level: %.1f nits\n", paper_white);
+         }
+      }
+      else
+      {
+         RARCH_LOG("[Android HDR] Using default paper white: %.1f nits\n", paper_white);
+      }
+      paper_white_checked = true;
+   }
+   
+   return paper_white;
+#else
+   return 200.0f;
+#endif
 }
 #endif
 

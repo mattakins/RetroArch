@@ -373,6 +373,7 @@ bool is_screen_reader_enabled(void);
 bool android_display_supports_hdr(void);
 float android_display_get_max_luminance(void);
 float android_display_get_min_luminance(void);
+float android_display_get_paper_white_luminance(void);
 
 #endif
 

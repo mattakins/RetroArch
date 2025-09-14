@@ -18,6 +18,11 @@
 #include <sys/system_properties.h>
 #include <android/native_window.h>
 
+/* HDR window format definitions */
+#ifndef WINDOW_FORMAT_RGBA_1010102
+#define WINDOW_FORMAT_RGBA_1010102 0x2B
+#endif
+
 #include <formats/image.h>
 #include <string/stdstring.h>
 #include <compat/strl.h>
@@ -186,8 +191,28 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    and->height                     = ANativeWindow_getHeight(android_app->window);
    
 #ifdef ANDROID
-   /* Detect HDR support using native Vulkan surface format detection */
-   /* This must happen after surface creation */
+   /* Configure native window for HDR BEFORE surface creation */
+   if (android_display_supports_hdr())
+   {
+      if (android_app->window)
+      {
+         /* Set window format to 10-bit for HDR support */
+         /* Must be done BEFORE Vulkan surface creation */
+         int32_t result = ANativeWindow_setBuffersGeometry(android_app->window, 
+                                                          and->width, and->height, 
+                                                          WINDOW_FORMAT_RGBA_1010102);
+         if (result == 0)
+         {
+            RARCH_LOG("[Android Vulkan] Native window configured for HDR (10-bit)\n");
+         }
+         else
+         {
+            RARCH_LOG("[Android Vulkan] Failed to configure HDR format, using default\n");
+         }
+      }
+   }
+   
+   /* Create Vulkan surface with potentially HDR-configured window */
    if (!vulkan_surface_create(&and->vk, VULKAN_WSI_ANDROID,
             NULL, android_app->window,
             and->width, and->height, and->swap_interval))
@@ -196,7 +221,7 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
       return false;
    }
    
-   /* Check HDR support using platform-level detection */
+   /* Set HDR support flags after successful surface creation */
    if (android_display_supports_hdr())
    {
       and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
