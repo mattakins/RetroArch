@@ -3043,46 +3043,13 @@ static bool accessibility_speak_android(int speed,
    return true;
 }
 
-/* Android HDR detection using system properties */
+/* Android HDR detection via Vulkan surface formats only */
 bool android_display_supports_hdr(void)
 {
 #ifdef ANDROID
-   static bool hdr_checked = false;
-   static bool hdr_supported = false;
-   char prop_value[PROP_VALUE_MAX] = {0};
-   
-   if (!hdr_checked)
-   {
-      /* Check Android system properties for HDR support */
-      /* ro.vendor.display.hdr.supported or similar properties */
-      if (__system_property_get("ro.vendor.display.hdr.supported", prop_value) > 0)
-      {
-         hdr_supported = (strcmp(prop_value, "1") == 0 || strcmp(prop_value, "true") == 0);
-         RARCH_LOG("[Android HDR] ro.vendor.display.hdr.supported = %s\n", prop_value);
-      }
-      else if (__system_property_get("vendor.display.hdr_supported", prop_value) > 0)
-      {
-         hdr_supported = (strcmp(prop_value, "1") == 0 || strcmp(prop_value, "true") == 0);
-         RARCH_LOG("[Android HDR] vendor.display.hdr_supported = %s\n", prop_value);
-      }
-      else
-      {
-         /* Fallback: use Vulkan surface format detection for HDR capability */
-         /* This avoids relying on potentially restricted system properties */
-         struct android_app *android_app = (struct android_app*)g_android;
-         if (android_app)
-         {
-            hdr_supported = true; /* Will be validated by Vulkan format detection */
-            RARCH_LOG("[Android HDR] System properties restricted, deferring to Vulkan detection\n");
-         }
-      }
-      
-      hdr_checked = true;
-      RARCH_LOG("[Android HDR] Native detection result: %s\n", 
-               hdr_supported ? "supported" : "not supported");
-   }
-   
-   return hdr_supported;
+   /* Always return true - let Vulkan surface format detection handle actual HDR capability */
+   /* This is more reliable than system properties which are often restricted */
+   return true;
 #else
    return false;
 #endif

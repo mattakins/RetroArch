@@ -192,23 +192,21 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    
 #ifdef ANDROID
    /* Configure native window for HDR BEFORE surface creation */
-   if (android_display_supports_hdr())
+   /* Always attempt HDR configuration - Vulkan will validate actual capability */
+   if (android_app->window)
    {
-      if (android_app->window)
+      /* Set window format to 10-bit for HDR support */
+      /* Must be done BEFORE Vulkan surface creation */
+      int32_t result = ANativeWindow_setBuffersGeometry(android_app->window, 
+                                                       and->width, and->height, 
+                                                       WINDOW_FORMAT_RGBA_1010102);
+      if (result == 0)
       {
-         /* Set window format to 10-bit for HDR support */
-         /* Must be done BEFORE Vulkan surface creation */
-         int32_t result = ANativeWindow_setBuffersGeometry(android_app->window, 
-                                                          and->width, and->height, 
-                                                          WINDOW_FORMAT_RGBA_1010102);
-         if (result == 0)
-         {
-            RARCH_LOG("[Android Vulkan] Native window configured for HDR (10-bit)\n");
-         }
-         else
-         {
-            RARCH_LOG("[Android Vulkan] Failed to configure HDR format, using default\n");
-         }
+         RARCH_LOG("[Android Vulkan] Native window configured for HDR (10-bit)\n");
+      }
+      else
+      {
+         RARCH_LOG("[Android Vulkan] Failed to configure HDR format, using default\n");
       }
    }
    
@@ -221,17 +219,9 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
       return false;
    }
    
-   /* Set HDR support flags after successful surface creation */
-   if (android_display_supports_hdr())
-   {
-      and->vk.context.flags |= VK_CTX_FLAG_HDR_SUPPORT;
-      video_driver_set_hdr_support();
-      RARCH_LOG("[Android Vulkan] HDR support detected and enabled\n");
-   }
-   else
-   {
-      RARCH_LOG("[Android Vulkan] HDR not supported by display\n");
-   }
+   /* HDR support will be determined by Vulkan surface format detection */
+   /* in vulkan_common.c - no need to set flags here */
+   RARCH_LOG("[Android Vulkan] HDR capability will be determined by Vulkan format detection\n");
    
    /* Check if HDR should be enabled for actual rendering */
    and->hdr_enable = android_vulkan_should_enable_hdr();
