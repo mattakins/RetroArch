@@ -651,6 +651,7 @@ typedef struct settings
       bool video_shader_watch_files;
       bool video_shader_remember_last_dir;
       bool video_shader_preset_save_reference_enable;
+      bool shader_gyro_enable;
       bool video_scan_subframes;
       bool video_threaded;
       bool video_font_enable;

@@ -38,6 +38,8 @@
 #include "../../retroarch.h"
 #include "../../verbosity.h"
 #include "../../msg_hash.h"
+#include "../../configuration.h"
+#include "../../input/input_driver.h"
 
 static const uint32_t opaque_vert[] =
 #include "../drivers/vulkan_shaders/opaque.vert.inc"
@@ -2411,6 +2413,26 @@ void Pass::build_semantics(VkDescriptorSet set, uint8_t *buffer,
 
    build_semantic_float(buffer, SLANG_SEMANTIC_CORE_ASPECT_ROT,
                       core_aspect_rot);
+
+   /* Gyroscope and accelerometer */
+   {
+      settings_t *settings = config_get_ptr();
+      if (settings && settings->bools.shader_gyro_enable)
+      {
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_X,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Y,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y));
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Z,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_X,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Y,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Z,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
+      }
+   }
 
    /* Standard inputs */
    build_semantic_texture(set, buffer, SLANG_TEXTURE_SEMANTIC_ORIGINAL, original);

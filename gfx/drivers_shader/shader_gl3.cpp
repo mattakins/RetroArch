@@ -39,6 +39,8 @@
 #include "../../retroarch.h"
 #include "../../verbosity.h"
 #include "../../msg_hash.h"
+#include "../../configuration.h"
+#include "../../input/input_driver.h"
 
 static void gl3_build_default_matrix(float *data)
 {
@@ -1591,6 +1593,26 @@ void Pass::build_semantics(uint8_t *buffer,
                       total_subframes);
    build_semantic_uint(buffer, SLANG_SEMANTIC_CURRENT_SUBFRAME,
                       current_subframe);
+
+   /* Gyroscope and accelerometer */
+   {
+      settings_t *settings = config_get_ptr();
+      if (settings && settings->bools.shader_gyro_enable)
+      {
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_X,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Y,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y));
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Z,
+                           input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_X,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Y,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Z,
+                           input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
+      }
+   }
 
    /* Standard inputs */
    build_semantic_texture(buffer, SLANG_TEXTURE_SEMANTIC_ORIGINAL, original);

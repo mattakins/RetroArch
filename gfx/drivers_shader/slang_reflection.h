@@ -84,10 +84,22 @@ enum slang_semantic
    SLANG_SEMANTIC_TOTAL_SUBFRAMES  = 10,
    /* uint, current sub frame */
    SLANG_SEMANTIC_CURRENT_SUBFRAME = 11,
+   /* float, gyroscope X axis */
+   SLANG_SEMANTIC_GYROSCOPE_X      = 12,
+   /* float, gyroscope Y axis */
+   SLANG_SEMANTIC_GYROSCOPE_Y      = 13,
+   /* float, gyroscope Z axis */
+   SLANG_SEMANTIC_GYROSCOPE_Z      = 14,
+   /* float, accelerometer X axis */
+   SLANG_SEMANTIC_ACCELEROMETER_X  = 15,
+   /* float, accelerometer Y axis */
+   SLANG_SEMANTIC_ACCELEROMETER_Y  = 16,
+   /* float, accelerometer Z axis */
+   SLANG_SEMANTIC_ACCELEROMETER_Z  = 17,
    SLANG_NUM_BASE_SEMANTICS,
 
    /* float, user defined parameter, arrayed */
-   SLANG_SEMANTIC_FLOAT_PARAMETER  = 12,
+   SLANG_SEMANTIC_FLOAT_PARAMETER  = 18,
 
    SLANG_NUM_SEMANTICS,
    SLANG_INVALID_SEMANTIC          = -1

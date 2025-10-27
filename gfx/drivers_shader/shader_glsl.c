@@ -39,6 +39,8 @@
 #include "../../core.h"
 #include "../../retroarch.h"
 #include "../../verbosity.h"
+#include "../../configuration.h"
+#include "../../input/input_driver.h"
 
 #if defined(ORBIS)
 #include "../../deps/xxHash/xxhash.h"
@@ -110,6 +112,13 @@ struct shader_uniforms
 
    float core_aspect;
    float core_aspect_rot;
+
+   int gyroscope_x;
+   int gyroscope_y;
+   int gyroscope_z;
+   int accelerometer_x;
+   int accelerometer_y;
+   int accelerometer_z;
 
    int lut_texture[GFX_MAX_TEXTURES];
    unsigned frame_count_mod;
@@ -756,6 +765,12 @@ static void gl_glsl_find_uniforms(glsl_shader_data_t *glsl,
    uni->core_aspect      = gl_glsl_get_uniform(glsl, prog, "OriginalAspect");
    uni->core_aspect_rot  = gl_glsl_get_uniform(glsl, prog, "OriginalAspectRotAted");
 
+   uni->gyroscope_x      = gl_glsl_get_uniform(glsl, prog, "GyroscopeX");
+   uni->gyroscope_y      = gl_glsl_get_uniform(glsl, prog, "GyroscopeY");
+   uni->gyroscope_z      = gl_glsl_get_uniform(glsl, prog, "GyroscopeZ");
+   uni->accelerometer_x  = gl_glsl_get_uniform(glsl, prog, "AccelerometerX");
+   uni->accelerometer_y  = gl_glsl_get_uniform(glsl, prog, "AccelerometerY");
+   uni->accelerometer_z  = gl_glsl_get_uniform(glsl, prog, "AccelerometerZ");
 
    for (i = 0; i < glsl->shader->luts; i++)
       uni->lut_texture[i] = glGetUniformLocation(prog, glsl->shader->lut[i].id);
@@ -1566,6 +1581,34 @@ static void gl_glsl_set_params(void *dat, void *shader_data)
             glsl->prg[glsl->active_idx].id,
             glsl->shader->parameters[i].id);
       glUniform1f(location, glsl->shader->parameters[i].current);
+   }
+
+   /* Gyroscope and accelerometer. */
+   {
+      settings_t *settings = config_get_ptr();
+      if (settings && settings->bools.shader_gyro_enable)
+      {
+         const struct shader_uniforms *uni = &glsl->uniforms[glsl->active_idx];
+
+         if (uni->gyroscope_x >= 0)
+            glUniform1f(uni->gyroscope_x,
+                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
+         if (uni->gyroscope_y >= 0)
+            glUniform1f(uni->gyroscope_y,
+                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y));
+         if (uni->gyroscope_z >= 0)
+            glUniform1f(uni->gyroscope_z,
+                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z));
+         if (uni->accelerometer_x >= 0)
+            glUniform1f(uni->accelerometer_x,
+                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X));
+         if (uni->accelerometer_y >= 0)
+            glUniform1f(uni->accelerometer_y,
+                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
+         if (uni->accelerometer_z >= 0)
+            glUniform1f(uni->accelerometer_z,
+                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
+      }
    }
 }
 

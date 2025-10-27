@@ -57,6 +57,12 @@ static const char *semantic_uniform_names[] = {
    "OriginalAspectRotated",
    "TotalSubFrames",
    "CurrentSubFrame",
+   "GyroscopeX",
+   "GyroscopeY",
+   "GyroscopeZ",
+   "AccelerometerX",
+   "AccelerometerY",
+   "AccelerometerZ",
 };
 
 static slang_texture_semantic slang_name_to_texture_semantic(
