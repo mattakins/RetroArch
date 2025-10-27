@@ -163,6 +163,12 @@ static bool slang_process_reflection(
             "OriginalAspectRotated",
             "TotalSubFrames",
             "CurrentSubFrame",
+            "GyroscopeX",
+            "GyroscopeY",
+            "GyroscopeZ",
+            "AccelerometerX",
+            "AccelerometerY",
+            "AccelerometerZ",
          };
          int size = sizeof(names) / sizeof(*names);
          if (semantic < size)
