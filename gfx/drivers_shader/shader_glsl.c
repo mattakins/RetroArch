@@ -1586,10 +1586,12 @@ static void gl_glsl_set_params(void *dat, void *shader_data)
    /* Gyroscope and accelerometer. */
    {
       settings_t *settings = config_get_ptr();
+      const struct shader_uniforms *uni = &glsl->uniforms[glsl->active_idx];
+
+      /* Always set gyro uniforms if shader uses them */
+      /* Values are 0.0 if disabled or not available */
       if (settings && settings->bools.shader_gyro_enable)
       {
-         const struct shader_uniforms *uni = &glsl->uniforms[glsl->active_idx];
-
          if (uni->gyroscope_x >= 0)
             glUniform1f(uni->gyroscope_x,
                   input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
@@ -1608,6 +1610,22 @@ static void gl_glsl_set_params(void *dat, void *shader_data)
          if (uni->accelerometer_z >= 0)
             glUniform1f(uni->accelerometer_z,
                   input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
+      }
+      else
+      {
+         /* Set to zero when disabled */
+         if (uni->gyroscope_x >= 0)
+            glUniform1f(uni->gyroscope_x, 0.0f);
+         if (uni->gyroscope_y >= 0)
+            glUniform1f(uni->gyroscope_y, 0.0f);
+         if (uni->gyroscope_z >= 0)
+            glUniform1f(uni->gyroscope_z, 0.0f);
+         if (uni->accelerometer_x >= 0)
+            glUniform1f(uni->accelerometer_x, 0.0f);
+         if (uni->accelerometer_y >= 0)
+            glUniform1f(uni->accelerometer_y, 0.0f);
+         if (uni->accelerometer_z >= 0)
+            glUniform1f(uni->accelerometer_z, 0.0f);
       }
    }
 }

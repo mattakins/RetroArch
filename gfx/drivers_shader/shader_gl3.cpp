@@ -1597,6 +1597,8 @@ void Pass::build_semantics(uint8_t *buffer,
    /* Gyroscope and accelerometer */
    {
       settings_t *settings = config_get_ptr();
+      /* Always provide gyro uniforms for shader compatibility */
+      /* Values are 0.0 if disabled or not available */
       if (settings && settings->bools.shader_gyro_enable)
       {
          build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_X,
@@ -1611,6 +1613,16 @@ void Pass::build_semantics(uint8_t *buffer,
                            input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
          build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Z,
                            input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
+      }
+      else
+      {
+         /* Provide zero values when disabled */
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_X, 0.0f);
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Y, 0.0f);
+         build_semantic_float(buffer, SLANG_SEMANTIC_GYROSCOPE_Z, 0.0f);
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_X, 0.0f);
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Y, 0.0f);
+         build_semantic_float(buffer, SLANG_SEMANTIC_ACCELEROMETER_Z, 0.0f);
       }
    }
 
