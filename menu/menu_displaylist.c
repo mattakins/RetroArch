@@ -7598,13 +7598,6 @@ unsigned menu_displaylist_build_list(
             }
 
             if (menu_entries_append(list,
-                     msg_hash_to_str(MENU_ENUM_LABEL_VALUE_SHADER_GYRO_ENABLE),
-                     msg_hash_to_str(MENU_ENUM_LABEL_SHADER_GYRO_ENABLE),
-                     MENU_ENUM_LABEL_SHADER_GYRO_ENABLE,
-                     MENU_SETTING_ACTION, 0, 0, NULL))
-               count++;
-
-            if (menu_entries_append(list,
                      msg_hash_to_str(MENU_ENUM_LABEL_VALUE_VIDEO_SHADER_REMEMBER_LAST_DIR),
                      msg_hash_to_str(MENU_ENUM_LABEL_VIDEO_SHADER_REMEMBER_LAST_DIR),
                      MENU_ENUM_LABEL_VIDEO_SHADER_REMEMBER_LAST_DIR,
@@ -13379,6 +13372,13 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
                            msg_hash_to_str(MENU_ENUM_LABEL_VIDEO_SHADER_PRESET_MANAGER),
                            MENU_ENUM_LABEL_VIDEO_SHADER_PRESET_MANAGER,
                            MENU_SETTING_ACTION, 0, 0, NULL))
+                     count++;
+
+                  if (menu_entries_append(info->list,
+                           msg_hash_to_str(MENU_ENUM_LABEL_VALUE_SHADER_GYRO_ENABLE),
+                           msg_hash_to_str(MENU_ENUM_LABEL_SHADER_GYRO_ENABLE),
+                           MENU_ENUM_LABEL_SHADER_GYRO_ENABLE,
+                           0, 0, 0, NULL))
                      count++;
 
                   if (menu_entries_append(info->list,
