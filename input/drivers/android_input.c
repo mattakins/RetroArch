@@ -2089,7 +2089,14 @@ static float android_input_get_sensor_input(void *data,
    static int get_log_counter = 0;
    float result = 0.0f;
 
-   if (port <= 0)
+   /* Debug: Log function calls */
+   if ((++get_log_counter % 600) == 0)
+   {
+      RARCH_LOG("[Android Input] get_sensor_input called: data=%p port=%u id=%u\n",
+            data, port, id);
+   }
+
+   if (port <= 0 && data != NULL)
    {
       android_input_t      *android      = (android_input_t*)data;
 
@@ -2116,14 +2123,21 @@ static float android_input_get_sensor_input(void *data,
       }
 
       /* Log sensor reads periodically */
-      if ((++get_log_counter % 1800) == 0)
+      if ((get_log_counter % 1800) == 0)
       {
-         RARCH_LOG("[Android Input] Sensor state: accel(%.2f,%.2f,%.2f) gyro(%.2f,%.2f,%.2f)\n",
+         RARCH_LOG("[Android Input] Sensor state read: accel(%.2f,%.2f,%.2f) gyro(%.2f,%.2f,%.2f) result=%.2f\n",
                android->accelerometer_state.x, android->accelerometer_state.y, android->accelerometer_state.z,
-               android->gyroscope_state.x, android->gyroscope_state.y, android->gyroscope_state.z);
+               android->gyroscope_state.x, android->gyroscope_state.y, android->gyroscope_state.z,
+               result);
       }
 
       return result;
+   }
+
+   /* Port check failed or data is NULL */
+   if ((get_log_counter % 600) == 0)
+   {
+      RARCH_LOG("[Android Input] get_sensor_input returning 0.0: port=%u data=%p\n", port, data);
    }
 
    return 0.0f;
