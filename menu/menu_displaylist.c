@@ -13470,7 +13470,7 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
 
                      if (menu_entries_append(info->list, gyro_accel_info, "",
                               MENU_ENUM_LABEL_VALUE_NO_ITEMS,
-                              MENU_SETTINGS_INFO, 0, 0, NULL))
+                              FILE_TYPE_NONE, 0, 0, NULL))
                         count++;
                   }
                }
