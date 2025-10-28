@@ -628,6 +628,31 @@ static void *android_input_init(const char *joypad_driver)
 
    android_app->input_alive = true;
 
+   /* Re-enable sensors if setting is enabled */
+   {
+      settings_t *settings = config_get_ptr();
+      bool enable_sensors  = settings->bools.input_sensors_enable;
+
+      if (enable_sensors)
+      {
+         unsigned accel_rate = android_app->accelerometer_event_rate;
+         unsigned gyro_rate  = android_app->gyroscope_event_rate;
+
+         if (accel_rate == 0)
+            accel_rate = DEFAULT_ASENSOR_EVENT_RATE;
+         if (gyro_rate == 0)
+            gyro_rate = DEFAULT_ASENSOR_EVENT_RATE;
+
+         RARCH_LOG("[Android Input] Driver init: enabling sensors per setting\n");
+
+         android_input_set_sensor_state(android, 0,
+               RETRO_SENSOR_ACCELEROMETER_ENABLE, accel_rate);
+
+         android_input_set_sensor_state(android, 0,
+               RETRO_SENSOR_GYROSCOPE_ENABLE, gyro_rate);
+      }
+   }
+
    return android;
 }
 
