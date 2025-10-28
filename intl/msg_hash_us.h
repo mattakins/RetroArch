@@ -10136,14 +10136,6 @@ MSG_HASH(
    "Watch shader files for new changes. After saving changes to a shader on disk, it will automatically be recompiled and applied to the content."
    )
 MSG_HASH(
-   MENU_ENUM_LABEL_VALUE_SHADER_GYRO_ENABLE,
-   "Enable Gyro for Shaders"
-   )
-MSG_HASH(
-   MENU_ENUM_SUBLABEL_SHADER_GYRO_ENABLE,
-   "Allow shaders to read gyroscope and accelerometer data for motion-based effects. Supported on Android, Web, and PS3."
-   )
-MSG_HASH(
    MENU_ENUM_LABEL_VALUE_VIDEO_SHADER_REMEMBER_LAST_DIR,
    "Remember Last Used Shader Directory"
    )

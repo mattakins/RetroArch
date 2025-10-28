@@ -1584,49 +1584,28 @@ static void gl_glsl_set_params(void *dat, void *shader_data)
    }
 
    /* Gyroscope and accelerometer. */
+   /* Values are 0.0 if sensors disabled or not available */
    {
-      settings_t *settings = config_get_ptr();
       const struct shader_uniforms *uni = &glsl->uniforms[glsl->active_idx];
 
-      /* Always set gyro uniforms if shader uses them */
-      /* Values are 0.0 if disabled or not available */
-      if (settings && settings->bools.shader_gyro_enable)
-      {
-         if (uni->gyroscope_x >= 0)
-            glUniform1f(uni->gyroscope_x,
-                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
-         if (uni->gyroscope_y >= 0)
-            glUniform1f(uni->gyroscope_y,
-                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y));
-         if (uni->gyroscope_z >= 0)
-            glUniform1f(uni->gyroscope_z,
-                  input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z));
-         if (uni->accelerometer_x >= 0)
-            glUniform1f(uni->accelerometer_x,
-                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X));
-         if (uni->accelerometer_y >= 0)
-            glUniform1f(uni->accelerometer_y,
-                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
-         if (uni->accelerometer_z >= 0)
-            glUniform1f(uni->accelerometer_z,
-                  input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
-      }
-      else
-      {
-         /* Set to zero when disabled */
-         if (uni->gyroscope_x >= 0)
-            glUniform1f(uni->gyroscope_x, 0.0f);
-         if (uni->gyroscope_y >= 0)
-            glUniform1f(uni->gyroscope_y, 0.0f);
-         if (uni->gyroscope_z >= 0)
-            glUniform1f(uni->gyroscope_z, 0.0f);
-         if (uni->accelerometer_x >= 0)
-            glUniform1f(uni->accelerometer_x, 0.0f);
-         if (uni->accelerometer_y >= 0)
-            glUniform1f(uni->accelerometer_y, 0.0f);
-         if (uni->accelerometer_z >= 0)
-            glUniform1f(uni->accelerometer_z, 0.0f);
-      }
+      if (uni->gyroscope_x >= 0)
+         glUniform1f(uni->gyroscope_x,
+               input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X));
+      if (uni->gyroscope_y >= 0)
+         glUniform1f(uni->gyroscope_y,
+               input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y));
+      if (uni->gyroscope_z >= 0)
+         glUniform1f(uni->gyroscope_z,
+               input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z));
+      if (uni->accelerometer_x >= 0)
+         glUniform1f(uni->accelerometer_x,
+               input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X));
+      if (uni->accelerometer_y >= 0)
+         glUniform1f(uni->accelerometer_y,
+               input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y));
+      if (uni->accelerometer_z >= 0)
+         glUniform1f(uni->accelerometer_z,
+               input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z));
    }
 }
 

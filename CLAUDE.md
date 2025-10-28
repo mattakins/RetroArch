@@ -62,13 +62,14 @@ git push origin master
 
 ## Gyro Support in Shaders
 
-RetroArch now exposes gyroscope and accelerometer data to shaders, enabling motion-based visual effects.
+RetroArch exposes gyroscope and accelerometer data to shaders, enabling motion-based visual effects.
 
 ### Configuration
-- **Setting:** Video → Shaders → Enable Gyro for Shaders
-- **Config Key:** `shader_gyro_enable = "true"`
-- **Default:** Enabled
+- **Setting:** Settings → Input → Auxiliary Sensor Data
+- **Config Key:** `input_sensors_enable = "true"`
+- **Default:** Enabled (except on Android where it defaults to false for battery reasons)
 - **Platforms:** Android, Web (mobile browsers), PlayStation 3
+- **Note:** When sensors are disabled, shader uniforms receive 0.0 values
 
 ### Available Shader Uniforms
 

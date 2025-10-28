@@ -4611,10 +4611,6 @@ MSG_HASH(
    "video_shader_watch_files"
    )
 MSG_HASH(
-   MENU_ENUM_LABEL_SHADER_GYRO_ENABLE,
-   "shader_gyro_enable"
-   )
-MSG_HASH(
    MENU_ENUM_LABEL_VIDEO_SHADER_REMEMBER_LAST_DIR,
    "video_shader_remember_last_dir"
    )
