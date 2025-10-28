@@ -1593,6 +1593,7 @@ static void android_input_poll_user(android_input_t *android)
    struct android_app *android_app = (struct android_app*)g_android;
    bool poll_accelerometer         = false;
    bool poll_gyroscope             = false;
+   static int log_counter          = 0;
 
    if (!android_app->sensorEventQueue)
       return;
@@ -1605,18 +1606,32 @@ static void android_input_poll_user(android_input_t *android)
          (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)) &&
                android_app->gyroscopeSensor;
 
+   /* Log sensor polling state every 300 frames (~5 seconds at 60fps) */
+   if ((log_counter++ % 300) == 0)
+   {
+      RARCH_LOG("[Android Input] Sensor poll state: accel=%d gyro=%d\n",
+            poll_accelerometer, poll_gyroscope);
+   }
+
    if (poll_accelerometer || poll_gyroscope)
    {
       ASensorEvent event;
+      int event_count = 0;
       while (ASensorEventQueue_getEvents(
             android_app->sensorEventQueue, &event, 1) > 0)
       {
+         event_count++;
          switch (event.type)
          {
             case ASENSOR_TYPE_ACCELEROMETER:
                android->accelerometer_state.x = event.acceleration.x;
                android->accelerometer_state.y = event.acceleration.y;
                android->accelerometer_state.z = event.acceleration.z;
+               if ((log_counter % 300) == 1)
+               {
+                  RARCH_LOG("[Android Input] Accel event: x=%.2f y=%.2f z=%.2f\n",
+                        event.acceleration.x, event.acceleration.y, event.acceleration.z);
+               }
                break;
             case ASENSOR_TYPE_GYROSCOPE:
                /* ASensorEvent struct is mysterious - have to
@@ -1625,10 +1640,19 @@ static void android_input_poll_user(android_input_t *android)
                android->gyroscope_state.x = event.data[0];
                android->gyroscope_state.y = event.data[1];
                android->gyroscope_state.z = event.data[2];
+               if ((log_counter % 300) == 1)
+               {
+                  RARCH_LOG("[Android Input] Gyro event: x=%.2f y=%.2f z=%.2f\n",
+                        event.data[0], event.data[1], event.data[2]);
+               }
                break;
             default:
                break;
          }
+      }
+      if ((log_counter % 300) == 1 && event_count > 0)
+      {
+         RARCH_LOG("[Android Input] Received %d sensor events\n", event_count);
       }
    }
 }
@@ -1967,6 +1991,7 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
       switch (action)
       {
          case RETRO_SENSOR_ACCELEROMETER_ENABLE:
+            RARCH_LOG("[Android Input] Enabling accelerometer (rate: %u Hz)\n", event_rate);
             if (!android_app->accelerometerSensor)
                android_input_enable_sensor_manager(android_app);
 
@@ -1980,7 +2005,11 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
                ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
                      android_app->accelerometerSensor, (1000L / event_rate)
                      * 1000);
+               RARCH_LOG("[Android Input] Accelerometer enabled successfully\n");
             }
+            else
+               RARCH_LOG("[Android Input] Failed to enable accelerometer (queue=%p, sensor=%p)\n",
+                     (void*)android_app->sensorEventQueue, (void*)android_app->accelerometerSensor);
 
             android_app->accelerometer_event_rate = event_rate;
 
@@ -2003,6 +2032,7 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
             return true;
 
          case RETRO_SENSOR_GYROSCOPE_ENABLE:
+            RARCH_LOG("[Android Input] Enabling gyroscope (rate: %u Hz)\n", event_rate);
             if (!android_app->gyroscopeSensor)
                android_input_enable_sensor_manager(android_app);
 
@@ -2016,7 +2046,11 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
                ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
                      android_app->gyroscopeSensor, (1000L / event_rate)
                      * 1000);
+               RARCH_LOG("[Android Input] Gyroscope enabled successfully\n");
             }
+            else
+               RARCH_LOG("[Android Input] Failed to enable gyroscope (queue=%p, sensor=%p)\n",
+                     (void*)android_app->sensorEventQueue, (void*)android_app->gyroscopeSensor);
 
             android_app->gyroscope_event_rate = event_rate;
 
@@ -2049,6 +2083,9 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
 static float android_input_get_sensor_input(void *data,
       unsigned port, unsigned id)
 {
+   static int get_log_counter = 0;
+   float result = 0.0f;
+
    if (port <= 0)
    {
       android_input_t      *android      = (android_input_t*)data;
@@ -2056,18 +2093,34 @@ static float android_input_get_sensor_input(void *data,
       switch (id)
       {
          case RETRO_SENSOR_ACCELEROMETER_X:
-            return android->accelerometer_state.x;
+            result = android->accelerometer_state.x;
+            break;
          case RETRO_SENSOR_ACCELEROMETER_Y:
-            return android->accelerometer_state.y;
+            result = android->accelerometer_state.y;
+            break;
          case RETRO_SENSOR_ACCELEROMETER_Z:
-            return android->accelerometer_state.z;
+            result = android->accelerometer_state.z;
+            break;
          case RETRO_SENSOR_GYROSCOPE_X:
-            return android->gyroscope_state.x;
+            result = android->gyroscope_state.x;
+            break;
          case RETRO_SENSOR_GYROSCOPE_Y:
-            return android->gyroscope_state.y;
+            result = android->gyroscope_state.y;
+            break;
          case RETRO_SENSOR_GYROSCOPE_Z:
-            return android->gyroscope_state.z;
+            result = android->gyroscope_state.z;
+            break;
       }
+
+      /* Log sensor reads periodically */
+      if ((++get_log_counter % 1800) == 0)
+      {
+         RARCH_LOG("[Android Input] Sensor state: accel(%.2f,%.2f,%.2f) gyro(%.2f,%.2f,%.2f)\n",
+               android->accelerometer_state.x, android->accelerometer_state.y, android->accelerometer_state.z,
+               android->gyroscope_state.x, android->gyroscope_state.y, android->gyroscope_state.z);
+      }
+
+      return result;
    }
 
    return 0.0f;
