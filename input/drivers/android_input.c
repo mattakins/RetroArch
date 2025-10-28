@@ -1634,6 +1634,9 @@ static void android_input_poll_user(android_input_t *android)
                {
                   RARCH_LOG("[Android Input] Accel event: x=%.2f y=%.2f z=%.2f\n",
                         event.acceleration.x, event.acceleration.y, event.acceleration.z);
+                  RARCH_LOG("[Android Input] Stored in android=%p state=(%.2f,%.2f,%.2f)\n",
+                        android, android->accelerometer_state.x,
+                        android->accelerometer_state.y, android->accelerometer_state.z);
                }
                break;
             case ASENSOR_TYPE_GYROSCOPE:
@@ -2089,16 +2092,18 @@ static float android_input_get_sensor_input(void *data,
    static int get_log_counter = 0;
    float result = 0.0f;
 
-   /* Debug: Log function calls */
-   if ((++get_log_counter % 600) == 0)
-   {
-      RARCH_LOG("[Android Input] get_sensor_input called: data=%p port=%u id=%u\n",
-            data, port, id);
-   }
+   /* Debug: Log EVERY call to diagnose the issue */
+   RARCH_LOG("[Android Input] get_sensor_input called: data=%p port=%u id=%u\n",
+         data, port, id);
 
    if (port <= 0 && data != NULL)
    {
       android_input_t      *android      = (android_input_t*)data;
+
+      RARCH_LOG("[Android Input] Reading from android=%p: accel=(%.2f,%.2f,%.2f) gyro=(%.2f,%.2f,%.2f)\n",
+            android,
+            android->accelerometer_state.x, android->accelerometer_state.y, android->accelerometer_state.z,
+            android->gyroscope_state.x, android->gyroscope_state.y, android->gyroscope_state.z);
 
       switch (id)
       {
@@ -2122,14 +2127,7 @@ static float android_input_get_sensor_input(void *data,
             break;
       }
 
-      /* Log sensor reads periodically */
-      if ((get_log_counter % 1800) == 0)
-      {
-         RARCH_LOG("[Android Input] Sensor state read: accel(%.2f,%.2f,%.2f) gyro(%.2f,%.2f,%.2f) result=%.2f\n",
-               android->accelerometer_state.x, android->accelerometer_state.y, android->accelerometer_state.z,
-               android->gyroscope_state.x, android->gyroscope_state.y, android->gyroscope_state.z,
-               result);
-      }
+      RARCH_LOG("[Android Input] Returning result=%.2f for id=%u\n", result, id);
 
       return result;
    }
