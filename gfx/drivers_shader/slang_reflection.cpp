@@ -298,6 +298,20 @@ static bool validate_type_for_semantic(const spirv_cross::SPIRType &type, slang_
          return type.basetype == spirv_cross::SPIRType::Float
             &&  type.vecsize  == 1
             &&  type.columns  == 1;
+         /* float - gyroscope axes */
+      case SLANG_SEMANTIC_GYROSCOPE_X:
+      case SLANG_SEMANTIC_GYROSCOPE_Y:
+      case SLANG_SEMANTIC_GYROSCOPE_Z:
+         return type.basetype == spirv_cross::SPIRType::Float
+            &&  type.vecsize  == 1
+            &&  type.columns  == 1;
+         /* float - accelerometer axes */
+      case SLANG_SEMANTIC_ACCELEROMETER_X:
+      case SLANG_SEMANTIC_ACCELEROMETER_Y:
+      case SLANG_SEMANTIC_ACCELEROMETER_Z:
+         return type.basetype == spirv_cross::SPIRType::Float
+            &&  type.vecsize  == 1
+            &&  type.columns  == 1;
          /* float */
       case SLANG_SEMANTIC_FLOAT_PARAMETER:
          return type.basetype == spirv_cross::SPIRType::Float
