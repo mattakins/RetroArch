@@ -542,26 +542,15 @@ bool input_driver_set_sensor(
 float input_driver_get_sensor(
          unsigned port, bool sensors_enable, unsigned id)
 {
-   RARCH_LOG("[Input] input_driver_get_sensor called: port=%u id=%u sensors_enable=%d\n",
-         port, id, sensors_enable);
-
    if (!sensors_enable)
-   {
-      RARCH_LOG("[Input] Sensors disabled, returning 0.0\n");
       return 0.0f;
-   }
 
    if (input_driver_st.primary_joypad && input_driver_st.primary_joypad->get_sensor_input)
    {
       float value;
-      RARCH_LOG("[Input] Trying joypad driver sensor input\n");
       /* if joypad driver's get_sensor_input returns false, let input driver try */
       if (input_driver_st.primary_joypad->get_sensor_input(port, id, &value))
-      {
-         RARCH_LOG("[Input] Joypad driver returned value: %.4f\n", value);
          return value;
-      }
-      RARCH_LOG("[Input] Joypad driver returned false, falling through\n");
    }
    if (input_driver_st.current_data)
    {
@@ -569,18 +558,10 @@ float input_driver_get_sensor(
       if (current_driver->get_sensor_input)
       {
          void *current_data = input_driver_st.current_data;
-         float result = current_driver->get_sensor_input(current_data, port, id);
-         RARCH_LOG("[Input] Input driver returned value: %.4f\n", result);
-         return result;
+         return current_driver->get_sensor_input(current_data, port, id);
       }
-      RARCH_LOG("[Input] Input driver has no get_sensor_input function\n");
-   }
-   else
-   {
-      RARCH_LOG("[Input] No current_data available\n");
    }
 
-   RARCH_LOG("[Input] input_driver_get_sensor returning default 0.0\n");
    return 0.0f;
 }
 
@@ -4600,22 +4581,11 @@ float input_get_sensor_state(unsigned port, unsigned id)
    settings_t *settings      = config_get_ptr();
    bool input_sensors_enable = settings->bools.input_sensors_enable;
    float sensitivity         = 1.0f;
-   float result;
-
-   RARCH_LOG("[Input] input_get_sensor_state called: port=%u id=%u sensors_enable=%d\n",
-         port, id, input_sensors_enable);
-
    if (id >= RETRO_SENSOR_ACCELEROMETER_X && id <= RETRO_SENSOR_ACCELEROMETER_Z)
       sensitivity = settings->floats.input_sensor_accelerometer_sensitivity;
    else if (id >= RETRO_SENSOR_GYROSCOPE_X && id <= RETRO_SENSOR_GYROSCOPE_Z)
       sensitivity = settings->floats.input_sensor_gyroscope_sensitivity;
-
-   result = input_driver_get_sensor(port, input_sensors_enable, id) * sensitivity;
-
-   RARCH_LOG("[Input] input_get_sensor_state returning: %.4f (raw=%.4f sensitivity=%.2f)\n",
-         result, input_driver_get_sensor(port, input_sensors_enable, id), sensitivity);
-
-   return result;
+   return input_driver_get_sensor(port, input_sensors_enable, id) * sensitivity;
 }
 
 /**
