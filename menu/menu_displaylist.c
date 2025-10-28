@@ -130,6 +130,7 @@
 #include "../manual_content_scan.h"
 #include "../core_backup.h"
 #include "../misc/cpufreq/cpufreq.h"
+#include "../input/input_driver.h"
 #include "../input/input_remapping.h"
 
 #ifdef HAVE_MICROPHONE
@@ -13450,6 +13451,26 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
                      if (menu_entries_append(info->list, buf_tmp, shdr_scale_pass,
                               MENU_ENUM_LABEL_VIDEO_SHADER_SCALE_PASS,
                               MENU_SETTINGS_SHADER_PASS_SCALE_0 + i, 0, 0, NULL))
+                        count++;
+                  }
+
+                  /* Gyroscope and accelerometer readout */
+                  {
+                     char gyro_accel_info[256];
+                     float gyro_x = input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_X);
+                     float gyro_y = input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Y);
+                     float gyro_z = input_get_sensor_state(0, RETRO_SENSOR_GYROSCOPE_Z);
+                     float accel_x = input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_X);
+                     float accel_y = input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Y);
+                     float accel_z = input_get_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_Z);
+
+                     snprintf(gyro_accel_info, sizeof(gyro_accel_info),
+                           "Gyro: X=%.2f Y=%.2f Z=%.2f | Accel: X=%.2f Y=%.2f Z=%.2f",
+                           gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z);
+
+                     if (menu_entries_append(info->list, gyro_accel_info, "",
+                              MENU_ENUM_LABEL_VALUE_NO_ITEMS,
+                              MENU_SETTINGS_INFO, 0, 0, NULL))
                         count++;
                   }
                }
