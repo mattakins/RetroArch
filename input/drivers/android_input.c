@@ -449,25 +449,35 @@ static void android_input_poll_main_cmd(void)
       case APP_CMD_GAINED_FOCUS:
          {
             runloop_state_t *runloop_st = runloop_state_get_ptr();
-            bool enable_accelerometer   = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_DISABLE));
-            bool enable_gyroscope       = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_DISABLE));
+            settings_t *settings         = config_get_ptr();
+            bool enable_sensors          = settings->bools.input_sensors_enable;
+            bool enable_shader_gyro      = settings->bools.shader_gyro_enable;
+            bool enable_accelerometer    = enable_sensors && enable_shader_gyro;
+            bool enable_gyroscope        = enable_sensors && enable_shader_gyro;
 
 
             runloop_st->flags &= ~(RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_unset_stub_frame();
 
+            RARCH_LOG("[Android Input] APP_CMD_GAINED_FOCUS: sensors=%d shader_gyro=%d\n",
+                  enable_sensors, enable_shader_gyro);
+
             if (enable_accelerometer)
+            {
+               RARCH_LOG("[Android Input] Requesting accelerometer on focus gain\n");
                input_set_sensor_state(0,
                      RETRO_SENSOR_ACCELEROMETER_ENABLE,
                      android_app->accelerometer_event_rate);
+            }
 
             if (enable_gyroscope)
+            {
+               RARCH_LOG("[Android Input] Requesting gyroscope on focus gain\n");
                input_set_sensor_state(0,
                      RETRO_SENSOR_GYROSCOPE_ENABLE,
                      android_app->gyroscope_event_rate);
+            }
          }
          slock_lock(android_app->mutex);
          android_app->unfocused = false;
