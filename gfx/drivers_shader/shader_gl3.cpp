@@ -1112,6 +1112,12 @@ bool Pass::init_pipeline()
    reflect_parameter("OriginalAspectRotated", reflection.semantics[SLANG_SEMANTIC_CORE_ASPECT_ROT]);
    reflect_parameter("TotalSubFrames", reflection.semantics[SLANG_SEMANTIC_TOTAL_SUBFRAMES]);
    reflect_parameter("CurrentSubFrame", reflection.semantics[SLANG_SEMANTIC_CURRENT_SUBFRAME]);
+   reflect_parameter("GyroscopeX", reflection.semantics[SLANG_SEMANTIC_GYROSCOPE_X]);
+   reflect_parameter("GyroscopeY", reflection.semantics[SLANG_SEMANTIC_GYROSCOPE_Y]);
+   reflect_parameter("GyroscopeZ", reflection.semantics[SLANG_SEMANTIC_GYROSCOPE_Z]);
+   reflect_parameter("AccelerometerX", reflection.semantics[SLANG_SEMANTIC_ACCELEROMETER_X]);
+   reflect_parameter("AccelerometerY", reflection.semantics[SLANG_SEMANTIC_ACCELEROMETER_Y]);
+   reflect_parameter("AccelerometerZ", reflection.semantics[SLANG_SEMANTIC_ACCELEROMETER_Z]);
 
    reflect_parameter("OriginalSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_ORIGINAL][0]);
    reflect_parameter("SourceSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_SOURCE][0]);
