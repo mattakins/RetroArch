@@ -130,7 +130,6 @@
 #include "../manual_content_scan.h"
 #include "../core_backup.h"
 #include "../misc/cpufreq/cpufreq.h"
-#include "../input/input_driver.h"
 #include "../input/input_remapping.h"
 
 #ifdef HAVE_MICROPHONE

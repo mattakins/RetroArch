@@ -368,9 +368,6 @@ static void android_input_poll_main_cmd(void)
    int8_t cmd;
    struct android_app *android_app = (struct android_app*)g_android;
 
-   if (!android_app)
-      return;
-
    if (read(android_app->msgread, &cmd, sizeof(cmd)) != sizeof(cmd))
       cmd = -1;
 
@@ -1015,7 +1012,7 @@ static int android_input_recover_port(android_input_t *android, int id)
    int productId         = 0;
    settings_t *settings  = config_get_ptr();
 
-   if (!settings || !settings->bools.android_input_disconnect_workaround)
+   if (!settings->bools.android_input_disconnect_workaround)
        return -1;
    if (!engine_lookup_name(device_name, &vendorId,
 			   &productId, sizeof(device_name), id))
@@ -1035,9 +1032,6 @@ static bool is_configured_as_physical_keyboard(int vendor_id, int product_id, co
     int keyboard_product_id;
     char keyboard_name[256];
     settings_t *settings = config_get_ptr();
-
-    if (!settings)
-        return false;
 
     if (sscanf(settings->arrays.input_android_physical_keyboard, "%04x:%04x ", &keyboard_vendor_id, &keyboard_product_id) != 2)
     {
@@ -1484,9 +1478,6 @@ static void android_input_poll_input_gingerbread(
    AInputEvent              *event = NULL;
    struct android_app *android_app = (struct android_app*)g_android;
 
-   if (!android_app)
-      return;
-
    /* Read all pending events. */
    if (AInputQueue_getEvent(android_app->inputQueue, &event) >= 0)
    {
@@ -1550,9 +1541,6 @@ static void android_input_poll_input_default(android_input_t *android)
 {
    AInputEvent              *event = NULL;
    struct android_app *android_app = (struct android_app*)g_android;
-
-   if (!android_app)
-      return;
 
    /* Read all pending events. */
    while (AInputQueue_hasEvents(android_app->inputQueue))
@@ -1626,7 +1614,7 @@ static void android_input_poll_user(android_input_t *android)
    bool poll_accelerometer         = false;
    bool poll_gyroscope             = false;
 
-   if (!android_app || !android_app->sensorEventQueue)
+   if (!android_app->sensorEventQueue)
       return;
 
    poll_accelerometer = (android_app->sensor_state_mask &
@@ -1694,9 +1682,6 @@ static void android_input_poll(void *data)
    android_input_t *android        = (android_input_t*)data;
    settings_t            *settings = config_get_ptr();
 
-   if (!android_app || !settings)
-      return;
-
    while ((ident =
             ALooper_pollAll(settings->uints.input_block_timeout,
                NULL, NULL, NULL)) >= 0)
@@ -1713,9 +1698,6 @@ static void android_input_poll(void *data)
             android_input_poll_main_cmd();
             break;
       }
-
-      if (!android_app)
-         return;
 
       if (android_app->destroyRequested != 0)
       {
@@ -1737,9 +1719,6 @@ bool android_run_events(void *data)
 
    if (ALooper_pollOnce(-1, NULL, NULL, NULL) == LOOPER_ID_MAIN)
       android_input_poll_main_cmd();
-
-   if (!android_app)
-      return true;
 
    /* Check if we are exiting. */
    if (android_app->destroyRequested != 0)
@@ -2002,9 +1981,6 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
       struct android_app *android_app = (struct android_app*)g_android;
       android_input_t *android        = (android_input_t*)data;
 
-      if (!android_app)
-         return false;
-
       if (event_rate == 0)
          event_rate = DEFAULT_ASENSOR_EVENT_RATE;
 
@@ -2093,9 +2069,9 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
 static float android_input_get_sensor_input(void *data,
       unsigned port, unsigned id)
 {
-   if (port <= 0 && data != NULL)
+   if (port <= 0)
    {
-      android_input_t *android = (android_input_t*)data;
+      android_input_t      *android      = (android_input_t*)data;
 
       switch (id)
       {
