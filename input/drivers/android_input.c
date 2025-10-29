@@ -1014,7 +1014,7 @@ static int android_input_recover_port(android_input_t *android, int id)
    int productId         = 0;
    settings_t *settings  = config_get_ptr();
 
-   if (!settings->bools.android_input_disconnect_workaround)
+   if (!settings || !settings->bools.android_input_disconnect_workaround)
        return -1;
    if (!engine_lookup_name(device_name, &vendorId,
 			   &productId, sizeof(device_name), id))
@@ -1034,6 +1034,9 @@ static bool is_configured_as_physical_keyboard(int vendor_id, int product_id, co
     int keyboard_product_id;
     char keyboard_name[256];
     settings_t *settings = config_get_ptr();
+
+    if (!settings)
+        return false;
 
     if (sscanf(settings->arrays.input_android_physical_keyboard, "%04x:%04x ", &keyboard_vendor_id, &keyboard_product_id) != 2)
     {
@@ -1480,6 +1483,9 @@ static void android_input_poll_input_gingerbread(
    AInputEvent              *event = NULL;
    struct android_app *android_app = (struct android_app*)g_android;
 
+   if (!android_app)
+      return;
+
    /* Read all pending events. */
    if (AInputQueue_getEvent(android_app->inputQueue, &event) >= 0)
    {
@@ -1543,6 +1549,9 @@ static void android_input_poll_input_default(android_input_t *android)
 {
    AInputEvent              *event = NULL;
    struct android_app *android_app = (struct android_app*)g_android;
+
+   if (!android_app)
+      return;
 
    /* Read all pending events. */
    while (AInputQueue_hasEvents(android_app->inputQueue))
@@ -1683,6 +1692,9 @@ static void android_input_poll(void *data)
    struct android_app *android_app = (struct android_app*)g_android;
    android_input_t *android        = (android_input_t*)data;
    settings_t            *settings = config_get_ptr();
+
+   if (!android_app || !settings)
+      return;
 
    while ((ident =
             ALooper_pollAll(settings->uints.input_block_timeout,
