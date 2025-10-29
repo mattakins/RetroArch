@@ -450,13 +450,12 @@ static void android_input_poll_main_cmd(void)
          {
             runloop_state_t *runloop_st = runloop_state_get_ptr();
             settings_t *settings         = config_get_ptr();
-            bool enable_sensors          = settings->bools.input_sensors_enable;
 
             runloop_st->flags &= ~(RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_unset_stub_frame();
 
-            if (enable_sensors)
+            if (settings && settings->bools.input_sensors_enable)
             {
                input_set_sensor_state(0,
                      RETRO_SENSOR_ACCELEROMETER_ENABLE,
@@ -626,9 +625,8 @@ static void *android_input_init(const char *joypad_driver)
    /* Re-enable sensors if setting is enabled */
    {
       settings_t *settings = config_get_ptr();
-      bool enable_sensors  = settings->bools.input_sensors_enable;
 
-      if (enable_sensors)
+      if (settings && settings->bools.input_sensors_enable)
       {
          unsigned accel_rate = android_app->accelerometer_event_rate;
          unsigned gyro_rate  = android_app->gyroscope_event_rate;
