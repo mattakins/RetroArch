@@ -368,6 +368,9 @@ static void android_input_poll_main_cmd(void)
    int8_t cmd;
    struct android_app *android_app = (struct android_app*)g_android;
 
+   if (!android_app)
+      return;
+
    if (read(android_app->msgread, &cmd, sizeof(cmd)) != sizeof(cmd))
       cmd = -1;
 
@@ -1613,7 +1616,7 @@ static void android_input_poll_user(android_input_t *android)
    bool poll_accelerometer         = false;
    bool poll_gyroscope             = false;
 
-   if (!android_app->sensorEventQueue)
+   if (!android_app || !android_app->sensorEventQueue)
       return;
 
    poll_accelerometer = (android_app->sensor_state_mask &
@@ -1698,6 +1701,9 @@ static void android_input_poll(void *data)
             break;
       }
 
+      if (!android_app)
+         return;
+
       if (android_app->destroyRequested != 0)
       {
          retroarch_ctl(RARCH_CTL_SET_SHUTDOWN, NULL);
@@ -1718,6 +1724,9 @@ bool android_run_events(void *data)
 
    if (ALooper_pollOnce(-1, NULL, NULL, NULL) == LOOPER_ID_MAIN)
       android_input_poll_main_cmd();
+
+   if (!android_app)
+      return true;
 
    /* Check if we are exiting. */
    if (android_app->destroyRequested != 0)
@@ -1979,6 +1988,9 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
    {
       struct android_app *android_app = (struct android_app*)g_android;
       android_input_t *android        = (android_input_t*)data;
+
+      if (!android_app)
+         return false;
 
       if (event_rate == 0)
          event_rate = DEFAULT_ASENSOR_EVENT_RATE;
