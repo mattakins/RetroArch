@@ -141,8 +141,8 @@ android {
 
   buildTypes {
     debug {
-      applicationIdSuffix '.gyrotest'
-      resValue "string", "app_name_suffix", " (GyroTest)"
+      applicationIdSuffix '.gyrotest1'
+      resValue "string", "app_name_suffix", " (GyroTest 1)"
     }
     if (project.hasProperty("RELEASE_STORE_FILE")) {
       release {
