@@ -2360,6 +2360,12 @@ static struct config_float_setting *populate_settings_float(
    SETTING_FLOAT("input_analog_sensitivity",     &settings->floats.input_analog_sensitivity, true, DEFAULT_ANALOG_SENSITIVITY, false);
    SETTING_FLOAT("input_sensor_accelerometer_sensitivity",&settings->floats.input_sensor_accelerometer_sensitivity, true, DEFAULT_SENSOR_ACCELEROMETER_SENSITIVITY, false);
    SETTING_FLOAT("input_sensor_gyroscope_sensitivity",    &settings->floats.input_sensor_gyroscope_sensitivity, true, DEFAULT_SENSOR_GYROSCOPE_SENSITIVITY, false);
+   SETTING_FLOAT("sensor_accelerometer_offset_x", &settings->floats.sensor_accelerometer_offset_x, true, DEFAULT_SENSOR_ACCELEROMETER_OFFSET_X, false);
+   SETTING_FLOAT("sensor_accelerometer_offset_y", &settings->floats.sensor_accelerometer_offset_y, true, DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Y, false);
+   SETTING_FLOAT("sensor_accelerometer_offset_z", &settings->floats.sensor_accelerometer_offset_z, true, DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Z, false);
+   SETTING_FLOAT("sensor_gyroscope_offset_x",     &settings->floats.sensor_gyroscope_offset_x, true, DEFAULT_SENSOR_GYROSCOPE_OFFSET_X, false);
+   SETTING_FLOAT("sensor_gyroscope_offset_y",     &settings->floats.sensor_gyroscope_offset_y, true, DEFAULT_SENSOR_GYROSCOPE_OFFSET_Y, false);
+   SETTING_FLOAT("sensor_gyroscope_offset_z",     &settings->floats.sensor_gyroscope_offset_z, true, DEFAULT_SENSOR_GYROSCOPE_OFFSET_Z, false);
 #ifdef HAVE_OVERLAY
    SETTING_FLOAT("input_overlay_opacity",                 &settings->floats.input_overlay_opacity, true, DEFAULT_INPUT_OVERLAY_OPACITY, false);
    SETTING_FLOAT("input_osk_overlay_opacity",             &settings->floats.input_osk_overlay_opacity, true, DEFAULT_INPUT_OVERLAY_OPACITY, false);

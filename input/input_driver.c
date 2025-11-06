@@ -4581,11 +4581,43 @@ float input_get_sensor_state(unsigned port, unsigned id)
    settings_t *settings      = config_get_ptr();
    bool input_sensors_enable = settings->bools.input_sensors_enable;
    float sensitivity         = 1.0f;
+   float calibration_offset  = 0.0f;
+   float raw_value;
+
+   /* Get sensitivity for sensor type */
    if (id >= RETRO_SENSOR_ACCELEROMETER_X && id <= RETRO_SENSOR_ACCELEROMETER_Z)
       sensitivity = settings->floats.input_sensor_accelerometer_sensitivity;
    else if (id >= RETRO_SENSOR_GYROSCOPE_X && id <= RETRO_SENSOR_GYROSCOPE_Z)
       sensitivity = settings->floats.input_sensor_gyroscope_sensitivity;
-   return input_driver_get_sensor(port, input_sensors_enable, id) * sensitivity;
+
+   /* Get calibration offset for specific axis */
+   switch (id)
+   {
+      case RETRO_SENSOR_ACCELEROMETER_X:
+         calibration_offset = settings->floats.sensor_accelerometer_offset_x;
+         break;
+      case RETRO_SENSOR_ACCELEROMETER_Y:
+         calibration_offset = settings->floats.sensor_accelerometer_offset_y;
+         break;
+      case RETRO_SENSOR_ACCELEROMETER_Z:
+         calibration_offset = settings->floats.sensor_accelerometer_offset_z;
+         break;
+      case RETRO_SENSOR_GYROSCOPE_X:
+         calibration_offset = settings->floats.sensor_gyroscope_offset_x;
+         break;
+      case RETRO_SENSOR_GYROSCOPE_Y:
+         calibration_offset = settings->floats.sensor_gyroscope_offset_y;
+         break;
+      case RETRO_SENSOR_GYROSCOPE_Z:
+         calibration_offset = settings->floats.sensor_gyroscope_offset_z;
+         break;
+   }
+
+   /* Get raw sensor value */
+   raw_value = input_driver_get_sensor(port, input_sensors_enable, id);
+
+   /* Apply calibration offset first, then sensitivity */
+   return (raw_value + calibration_offset) * sensitivity;
 }
 
 /**

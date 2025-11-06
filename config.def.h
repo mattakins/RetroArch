@@ -1589,6 +1589,13 @@
 #define DEFAULT_SENSOR_ACCELEROMETER_SENSITIVITY 1.0f
 #define DEFAULT_SENSOR_GYROSCOPE_SENSITIVITY 1.0f
 
+/* Sensor calibration offsets (m/s² for accelerometer, rad/s for gyroscope) */
+#define DEFAULT_SENSOR_ACCELEROMETER_OFFSET_X 0.0f
+#define DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Y 0.0f
+#define DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Z 0.0f
+#define DEFAULT_SENSOR_GYROSCOPE_OFFSET_X 0.0f
+#define DEFAULT_SENSOR_GYROSCOPE_OFFSET_Y 0.0f
+#define DEFAULT_SENSOR_GYROSCOPE_OFFSET_Z 0.0f
 
 /* Describes speed of which turbo-enabled buttons toggle. */
 #define DEFAULT_TURBO_ENABLE true
@@ -1620,9 +1627,10 @@
 /* Enables accelerometer/gyroscope/illuminance
  * sensor input, if supported */
 #if defined(ANDROID)
-/* Hardware sensors cause substantial battery
- * drain on Android... */
-#define DEFAULT_INPUT_SENSORS_ENABLE false
+/* Enable sensors by default for motion-based shader effects.
+ * Battery impact is minimal on modern devices (~1-3mA).
+ * Sensors auto-disable when app is backgrounded. */
+#define DEFAULT_INPUT_SENSORS_ENABLE true
 #else
 #define DEFAULT_INPUT_SENSORS_ENABLE true
 #endif

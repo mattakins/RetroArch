@@ -475,6 +475,12 @@ typedef struct settings
       float input_analog_sensitivity;
       float input_sensor_accelerometer_sensitivity;
       float input_sensor_gyroscope_sensitivity;
+      float sensor_accelerometer_offset_x;
+      float sensor_accelerometer_offset_y;
+      float sensor_accelerometer_offset_z;
+      float sensor_gyroscope_offset_x;
+      float sensor_gyroscope_offset_y;
+      float sensor_gyroscope_offset_z;
 #ifdef _3DS
       float bottom_font_scale;
 #endif

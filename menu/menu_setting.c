@@ -15999,6 +15999,96 @@ static bool setting_append_list(
             (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
             menu_settings_list_current_add_range(list, list_info, -5.0, 5.0, 0.1, true, true);
 
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_accelerometer_offset_x,
+                  MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_X,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_X,
+                  DEFAULT_SENSOR_ACCELEROMETER_OFFSET_X,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_accelerometer_offset_y,
+                  MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_Y,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_Y,
+                  DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Y,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_accelerometer_offset_z,
+                  MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_Z,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_Z,
+                  DEFAULT_SENSOR_ACCELEROMETER_OFFSET_Z,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_gyroscope_offset_x,
+                  MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_X,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_X,
+                  DEFAULT_SENSOR_GYROSCOPE_OFFSET_X,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_gyroscope_offset_y,
+                  MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_Y,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_Y,
+                  DEFAULT_SENSOR_GYROSCOPE_OFFSET_Y,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
+            CONFIG_FLOAT(
+                  list, list_info,
+                  &settings->floats.sensor_gyroscope_offset_z,
+                  MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_Z,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_Z,
+                  DEFAULT_SENSOR_GYROSCOPE_OFFSET_Z,
+                  "%.2f",
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
+
             CONFIG_UINT(
                   list, list_info,
                   &settings->uints.input_bind_timeout,

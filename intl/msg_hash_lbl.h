@@ -1898,6 +1898,30 @@ MSG_HASH(
    MENU_ENUM_LABEL_INPUT_SENSOR_GYROSCOPE_SENSITIVITY,
    "input_sensor_gyroscope_sensitivity"
    )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_X,
+   "sensor_accelerometer_offset_x"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_Y,
+   "sensor_accelerometer_offset_y"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_OFFSET_Z,
+   "sensor_accelerometer_offset_z"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_X,
+   "sensor_gyroscope_offset_x"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_Y,
+   "sensor_gyroscope_offset_y"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_GYROSCOPE_OFFSET_Z,
+   "sensor_gyroscope_offset_z"
+   )
 #ifdef GEKKO
 MSG_HASH(
    MENU_ENUM_LABEL_INPUT_MOUSE_SCALE,

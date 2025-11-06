@@ -3520,6 +3520,54 @@ MSG_HASH(
   "Adjust the sensitivity of the Gyroscope."
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_X,
+   "Accelerometer X Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_Y,
+   "Accelerometer Y Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_OFFSET_Z,
+   "Accelerometer Z Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_X,
+   "Gyroscope X Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_Y,
+   "Gyroscope Y Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_OFFSET_Z,
+   "Gyroscope Z Offset"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_ACCELEROMETER_OFFSET_X,
+   "Calibration offset for accelerometer X axis. Adjust to compensate for device tilt."
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_ACCELEROMETER_OFFSET_Y,
+   "Calibration offset for accelerometer Y axis. Adjust to compensate for device tilt."
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_ACCELEROMETER_OFFSET_Z,
+   "Calibration offset for accelerometer Z axis. Adjust to compensate for gravity reading."
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_GYROSCOPE_OFFSET_X,
+   "Calibration offset for gyroscope X axis. Adjust to eliminate drift."
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_GYROSCOPE_OFFSET_Y,
+   "Calibration offset for gyroscope Y axis. Adjust to eliminate drift."
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_GYROSCOPE_OFFSET_Z,
+   "Calibration offset for gyroscope Z axis. Adjust to eliminate drift."
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_VALUE_INPUT_BIND_TIMEOUT,
    "Bind Timeout"
    )
