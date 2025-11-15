@@ -1626,13 +1626,13 @@
 
 /* Enables accelerometer/gyroscope/illuminance
  * sensor input, if supported */
-#if defined(ANDROID)
-/* Enable sensors by default for motion-based shader effects.
+/* Sensors enabled by default on platforms with sensor support.
  * Battery impact is minimal on modern devices (~1-3mA).
  * Sensors auto-disable when app is backgrounded. */
+#if defined(HAVE_SENSORS)
 #define DEFAULT_INPUT_SENSORS_ENABLE true
 #else
-#define DEFAULT_INPUT_SENSORS_ENABLE true
+#define DEFAULT_INPUT_SENSORS_ENABLE false
 #endif
 
 /* Automatically enable game focus when running or
