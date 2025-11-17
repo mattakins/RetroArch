@@ -4621,6 +4621,60 @@ float input_get_sensor_state(unsigned port, unsigned id)
 }
 
 /**
+ * Calibrates the accelerometer by setting offsets to negate current raw readings.
+ * User should hold device in desired neutral position before calling.
+ *
+ * @return true on success, false if sensors not available
+ **/
+bool input_sensor_calibrate_accelerometer(void)
+{
+   settings_t *settings = config_get_ptr();
+   float raw_x, raw_y, raw_z;
+
+   if (!settings || !settings->bools.input_sensors_enable)
+      return false;
+
+   /* Get raw sensor values (bypassing current offsets) */
+   raw_x = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_X);
+   raw_y = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_Y);
+   raw_z = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_Z);
+
+   /* Set offsets to negate raw values - makes current position "neutral" */
+   settings->floats.sensor_accelerometer_offset_x = -raw_x;
+   settings->floats.sensor_accelerometer_offset_y = -raw_y;
+   settings->floats.sensor_accelerometer_offset_z = -raw_z;
+
+   return true;
+}
+
+/**
+ * Calibrates the gyroscope by setting offsets to negate current raw readings.
+ * User should hold device still before calling to remove drift/bias.
+ *
+ * @return true on success, false if sensors not available
+ **/
+bool input_sensor_calibrate_gyroscope(void)
+{
+   settings_t *settings = config_get_ptr();
+   float raw_x, raw_y, raw_z;
+
+   if (!settings || !settings->bools.input_sensors_enable)
+      return false;
+
+   /* Get raw sensor values (bypassing current offsets) */
+   raw_x = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_X);
+   raw_y = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_Y);
+   raw_z = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_Z);
+
+   /* Set offsets to negate raw values - removes drift/bias */
+   settings->floats.sensor_gyroscope_offset_x = -raw_x;
+   settings->floats.sensor_gyroscope_offset_y = -raw_y;
+   settings->floats.sensor_gyroscope_offset_z = -raw_z;
+
+   return true;
+}
+
+/**
  * Sets the rumble state. Used by RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE.
  *
  * @param port      User number.

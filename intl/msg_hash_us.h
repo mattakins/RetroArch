@@ -3717,6 +3717,22 @@ MSG_HASH(
    "Change motion sensor settings for accelerometer and gyroscope."
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_CALIBRATE,
+   "Calibrate Accelerometer"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_ACCELEROMETER_CALIBRATE,
+   "Hold device in neutral position and press to set current orientation as zero point."
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_CALIBRATE,
+   "Calibrate Gyroscope"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_SENSOR_GYROSCOPE_CALIBRATE,
+   "Hold device still and press to remove gyroscope drift/bias."
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_VALUE_INPUT_MENU_SETTINGS,
    "Menu Controls"
    )

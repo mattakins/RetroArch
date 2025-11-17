@@ -5715,6 +5715,38 @@ static int action_ok_core_options_flush(const char *path,
    return 0;
 }
 
+static int action_ok_sensor_accelerometer_calibrate(const char *path,
+      const char *label, unsigned type, size_t idx, size_t entry_idx)
+{
+   if (input_sensor_calibrate_accelerometer())
+      runloop_msg_queue_push(
+            "Accelerometer calibrated to current position",
+            1, 180, true,
+            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+   else
+      runloop_msg_queue_push(
+            "Accelerometer calibration failed - sensors not enabled",
+            1, 180, true,
+            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
+   return 0;
+}
+
+static int action_ok_sensor_gyroscope_calibrate(const char *path,
+      const char *label, unsigned type, size_t idx, size_t entry_idx)
+{
+   if (input_sensor_calibrate_gyroscope())
+      runloop_msg_queue_push(
+            "Gyroscope calibrated - drift removed",
+            1, 180, true,
+            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+   else
+      runloop_msg_queue_push(
+            "Gyroscope calibration failed - sensors not enabled",
+            1, 180, true,
+            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
+   return 0;
+}
+
 int action_ok_close_content(const char *path, const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
    int ret;
@@ -9387,6 +9419,8 @@ static int menu_cbs_init_bind_ok_compare_label(menu_file_list_cbs_t *cbs,
 #endif
          {MENU_ENUM_LABEL_EXPLORE_TAB,                         action_ok_push_default},
          {MENU_ENUM_LABEL_CONTENTLESS_CORES_TAB,               action_ok_push_default},
+         {MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_CALIBRATE,      action_ok_sensor_accelerometer_calibrate},
+         {MENU_ENUM_LABEL_SENSOR_GYROSCOPE_CALIBRATE,          action_ok_sensor_gyroscope_calibrate},
       };
 
       for (i = 0; i < ARRAY_SIZE(ok_list); i++)

@@ -1073,6 +1073,10 @@ bool input_set_rumble_gain(unsigned gain);
 
 float input_get_sensor_state(unsigned port, unsigned id);
 
+bool input_sensor_calibrate_accelerometer(void);
+
+bool input_sensor_calibrate_gyroscope(void);
+
 bool input_set_sensor_state(unsigned port,
       enum retro_sensor_action action, unsigned rate);
 

@@ -6671,6 +6671,14 @@ MSG_HASH(
    "input_sensor_settings"
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_CALIBRATE,
+   "sensor_accelerometer_calibrate"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_SENSOR_GYROSCOPE_CALIBRATE,
+   "sensor_gyroscope_calibrate"
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_INPUT_RUMBLE_GAIN,
    "input_rumble_gain"
    )

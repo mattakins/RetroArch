@@ -376,6 +376,8 @@ DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_input_menu_settings_list,           
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_input_turbo_fire_settings_list,     MENU_ENUM_SUBLABEL_INPUT_TURBO_FIRE_SETTINGS)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_input_haptic_feedback_settings_list,MENU_ENUM_SUBLABEL_INPUT_HAPTIC_FEEDBACK_SETTINGS)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_input_sensor_settings_list,    MENU_ENUM_SUBLABEL_INPUT_SENSOR_SETTINGS)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_sensor_accelerometer_calibrate,MENU_ENUM_SUBLABEL_SENSOR_ACCELEROMETER_CALIBRATE)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_sensor_gyroscope_calibrate,    MENU_ENUM_SUBLABEL_SENSOR_GYROSCOPE_CALIBRATE)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_latency_settings_list,         MENU_ENUM_SUBLABEL_LATENCY_SETTINGS)
 #ifdef HAVE_BLUETOOTH
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_bluetooth_settings_list,       MENU_ENUM_SUBLABEL_BLUETOOTH_SETTINGS)
@@ -5467,6 +5469,12 @@ int menu_cbs_init_bind_sublabel(menu_file_list_cbs_t *cbs,
             break;
          case MENU_ENUM_LABEL_INPUT_SENSOR_SETTINGS:
             BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_input_sensor_settings_list);
+            break;
+         case MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_CALIBRATE:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_sensor_accelerometer_calibrate);
+            break;
+         case MENU_ENUM_LABEL_SENSOR_GYROSCOPE_CALIBRATE:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_sensor_gyroscope_calibrate);
             break;
          case MENU_ENUM_LABEL_BLUETOOTH_SETTINGS:
 #ifdef HAVE_BLUETOOTH
