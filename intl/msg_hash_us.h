@@ -3709,6 +3709,14 @@ MSG_HASH(
    "Change haptic feedback and vibration settings."
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_SETTINGS,
+   "Motion Sensors"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_INPUT_SENSOR_SETTINGS,
+   "Change motion sensor settings for accelerometer and gyroscope."
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_VALUE_INPUT_MENU_SETTINGS,
    "Menu Controls"
    )
