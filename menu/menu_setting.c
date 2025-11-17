@@ -16073,6 +16073,22 @@ static bool setting_append_list(
             (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
             menu_settings_list_current_add_range(list, list_info, -10.0, 10.0, 0.1, true, true);
 
+            CONFIG_ACTION(
+                  list, list_info,
+                  MENU_ENUM_LABEL_SENSOR_ACCELEROMETER_CALIBRATE,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_CALIBRATE,
+                  &group_info,
+                  &subgroup_info,
+                  parent_group);
+
+            CONFIG_ACTION(
+                  list, list_info,
+                  MENU_ENUM_LABEL_SENSOR_GYROSCOPE_CALIBRATE,
+                  MENU_ENUM_LABEL_VALUE_SENSOR_GYROSCOPE_CALIBRATE,
+                  &group_info,
+                  &subgroup_info,
+                  parent_group);
+
             CONFIG_UINT(
                   list, list_info,
                   &settings->uints.input_bind_timeout,
