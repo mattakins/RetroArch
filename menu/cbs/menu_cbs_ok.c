@@ -5721,11 +5721,13 @@ static int action_ok_sensor_accelerometer_calibrate(const char *path,
    if (input_sensor_calibrate_accelerometer())
       runloop_msg_queue_push(
             "Accelerometer calibrated to current position",
+            sizeof("Accelerometer calibrated to current position") - 1,
             1, 180, true,
             NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
    else
       runloop_msg_queue_push(
             "Accelerometer calibration failed - sensors not enabled",
+            sizeof("Accelerometer calibration failed - sensors not enabled") - 1,
             1, 180, true,
             NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
    return 0;
@@ -5737,11 +5739,13 @@ static int action_ok_sensor_gyroscope_calibrate(const char *path,
    if (input_sensor_calibrate_gyroscope())
       runloop_msg_queue_push(
             "Gyroscope calibrated - drift removed",
+            sizeof("Gyroscope calibrated - drift removed") - 1,
             1, 180, true,
             NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
    else
       runloop_msg_queue_push(
             "Gyroscope calibration failed - sensors not enabled",
+            sizeof("Gyroscope calibration failed - sensors not enabled") - 1,
             1, 180, true,
             NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
    return 0;
