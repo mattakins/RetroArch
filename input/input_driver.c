@@ -4623,6 +4623,7 @@ float input_get_sensor_state(unsigned port, unsigned id)
 /**
  * Calibrates the accelerometer by setting offsets to negate current raw readings.
  * User should hold device in desired neutral position before calling.
+ * This replaces any previous calibration.
  *
  * @return true on success, false if sensors not available
  **/
@@ -4634,7 +4635,12 @@ bool input_sensor_calibrate_accelerometer(void)
    if (!settings || !settings->bools.input_sensors_enable)
       return false;
 
-   /* Get raw sensor values (bypassing current offsets) */
+   /* Reset offsets to ensure we get raw hardware values */
+   settings->floats.sensor_accelerometer_offset_x = 0.0f;
+   settings->floats.sensor_accelerometer_offset_y = 0.0f;
+   settings->floats.sensor_accelerometer_offset_z = 0.0f;
+
+   /* Get raw sensor values from hardware */
    raw_x = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_X);
    raw_y = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_Y);
    raw_z = input_driver_get_sensor(0, true, RETRO_SENSOR_ACCELEROMETER_Z);
@@ -4650,6 +4656,7 @@ bool input_sensor_calibrate_accelerometer(void)
 /**
  * Calibrates the gyroscope by setting offsets to negate current raw readings.
  * User should hold device still before calling to remove drift/bias.
+ * This replaces any previous calibration.
  *
  * @return true on success, false if sensors not available
  **/
@@ -4661,7 +4668,12 @@ bool input_sensor_calibrate_gyroscope(void)
    if (!settings || !settings->bools.input_sensors_enable)
       return false;
 
-   /* Get raw sensor values (bypassing current offsets) */
+   /* Reset offsets to ensure we get raw hardware values */
+   settings->floats.sensor_gyroscope_offset_x = 0.0f;
+   settings->floats.sensor_gyroscope_offset_y = 0.0f;
+   settings->floats.sensor_gyroscope_offset_z = 0.0f;
+
+   /* Get raw sensor values from hardware */
    raw_x = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_X);
    raw_y = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_Y);
    raw_z = input_driver_get_sensor(0, true, RETRO_SENSOR_GYROSCOPE_Z);

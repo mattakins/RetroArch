@@ -456,22 +456,21 @@ static void android_input_poll_main_cmd(void)
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_unset_stub_frame();
 
-            /* Re-enable sensors if setting is enabled OR if they were previously enabled */
-            if (enable_sensors || (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_ENABLE)))
+            /* Re-enable sensors based on current setting */
+            if (enable_sensors)
+            {
                input_set_sensor_state(0,
                      RETRO_SENSOR_ACCELEROMETER_ENABLE,
                      android_app->accelerometer_event_rate ?
                         android_app->accelerometer_event_rate :
                         DEFAULT_ASENSOR_EVENT_RATE);
 
-            if (enable_sensors || (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)))
                input_set_sensor_state(0,
                      RETRO_SENSOR_GYROSCOPE_ENABLE,
                      android_app->gyroscope_event_rate ?
                         android_app->gyroscope_event_rate :
                         DEFAULT_ASENSOR_EVENT_RATE);
+            }
          }
          slock_lock(android_app->mutex);
          android_app->unfocused = false;
@@ -629,13 +628,12 @@ static void *android_input_init(const char *joypad_driver)
 
    android_app->input_alive = true;
 
-   /* Re-enable sensors if setting is enabled OR if they were previously enabled */
+   /* Enable sensors based on current setting */
    {
       settings_t *settings = config_get_ptr();
       bool enable_sensors  = settings && settings->bools.input_sensors_enable;
 
-      if (enable_sensors || (android_app->sensor_state_mask &
-            (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_ENABLE)))
+      if (enable_sensors)
       {
          unsigned rate = android_app->accelerometer_event_rate;
          if (rate == 0)
@@ -643,12 +641,8 @@ static void *android_input_init(const char *joypad_driver)
 
          android_input_set_sensor_state(android, 0,
                RETRO_SENSOR_ACCELEROMETER_ENABLE, rate);
-      }
 
-      if (enable_sensors || (android_app->sensor_state_mask &
-            (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)))
-      {
-         unsigned rate = android_app->gyroscope_event_rate;
+         rate = android_app->gyroscope_event_rate;
          if (rate == 0)
             rate = DEFAULT_ASENSOR_EVENT_RATE;
 
