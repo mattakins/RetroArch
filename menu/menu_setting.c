@@ -15953,6 +15953,21 @@ static bool setting_append_list(
             (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
             menu_settings_list_current_add_range(list, list_info, -5.0, 5.0, 0.1, true, true);
 
+            CONFIG_BOOL(
+                  list, list_info,
+                  &settings->bools.input_sensors_enable,
+                  MENU_ENUM_LABEL_INPUT_SENSORS_ENABLE,
+                  MENU_ENUM_LABEL_VALUE_INPUT_SENSORS_ENABLE,
+                  DEFAULT_INPUT_SENSORS_ENABLE,
+                  MENU_ENUM_LABEL_VALUE_OFF,
+                  MENU_ENUM_LABEL_VALUE_ON,
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler,
+                  SD_FLAG_NONE);
+
             CONFIG_FLOAT(
                   list, list_info,
                   &settings->floats.input_sensor_accelerometer_sensitivity,
