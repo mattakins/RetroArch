@@ -1628,7 +1628,7 @@
  * sensor input, if supported */
 #if defined(ANDROID)
 /* Enable sensors by default for motion-based shader effects.
- * Battery impact is negligble - modern IMUs (BMI270/BMI323) consume ~0.7-0.9mA combined.
+ * Battery impact is negligible - modern IMUs (BMI270/BMI323) consume ~0.7-0.9mA combined.
  * Sensors auto-disable when app is backgrounded. */
 #define DEFAULT_INPUT_SENSORS_ENABLE true
 #else
