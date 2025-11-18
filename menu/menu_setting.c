@@ -16123,16 +16123,16 @@ static bool setting_append_list(
 
             CONFIG_ACTION(
                   list, list_info,
-                  MENU_ENUM_LABEL_INPUT_HAPTIC_FEEDBACK_SETTINGS,
-                  MENU_ENUM_LABEL_VALUE_INPUT_HAPTIC_FEEDBACK_SETTINGS,
+                  MENU_ENUM_LABEL_INPUT_SENSOR_SETTINGS,
+                  MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_SETTINGS,
                   &group_info,
                   &subgroup_info,
                   parent_group);
 
             CONFIG_ACTION(
                   list, list_info,
-                  MENU_ENUM_LABEL_INPUT_SENSOR_SETTINGS,
-                  MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_SETTINGS,
+                  MENU_ENUM_LABEL_INPUT_HAPTIC_FEEDBACK_SETTINGS,
+                  MENU_ENUM_LABEL_VALUE_INPUT_HAPTIC_FEEDBACK_SETTINGS,
                   &group_info,
                   &subgroup_info,
                   parent_group);
