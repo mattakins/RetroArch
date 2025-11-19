@@ -3710,11 +3710,11 @@ MSG_HASH(
    )
 MSG_HASH(
    MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_SETTINGS,
-   "Motion Sensors"
+   "Motion/Light Sensors"
    )
 MSG_HASH(
    MENU_ENUM_SUBLABEL_INPUT_SENSOR_SETTINGS,
-   "Change motion sensor settings for accelerometer and gyroscope."
+   "Change accelerometer, gyroscope and illuminance settings."
    )
 MSG_HASH(
    MENU_ENUM_LABEL_VALUE_SENSOR_ACCELEROMETER_CALIBRATE,
