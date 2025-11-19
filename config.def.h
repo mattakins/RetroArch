@@ -1624,16 +1624,10 @@
  * gamepads, plug-and-play style. */
 #define DEFAULT_INPUT_AUTODETECT_ENABLE true
 
-/* Enables accelerometer/gyroscope/illuminance
- * sensor input, if supported */
-#if defined(ANDROID)
-/* Enable sensors by default for motion-based shader effects.
- * Battery impact is negligible - modern IMUs (BMI270/BMI323) consume ~0.7-0.9mA combined.
- * Sensors auto-disable when app is backgrounded. */
+/* Enables accelerometer/gyroscope/illuminance sensor input, if supported.
+ * Modern IMUs consume minimal power (~0.7-0.9mA on Android).
+ * Sensors auto-disable when app is backgrounded on platforms that support it. */
 #define DEFAULT_INPUT_SENSORS_ENABLE true
-#else
-#define DEFAULT_INPUT_SENSORS_ENABLE false
-#endif
 
 /* Automatically enable game focus when running or
  * resuming content */
