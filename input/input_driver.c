@@ -4584,6 +4584,10 @@ float input_get_sensor_state(unsigned port, unsigned id)
    float calibration_offset  = 0.0f;
    float raw_value;
 
+   /* Return 0 when sensors disabled - calibration values remain stored */
+   if (!input_sensors_enable)
+      return 0.0f;
+
    /* Get sensitivity for sensor type */
    if (id >= RETRO_SENSOR_ACCELEROMETER_X && id <= RETRO_SENSOR_ACCELEROMETER_Z)
       sensitivity = settings->floats.input_sensor_accelerometer_sensitivity;
@@ -4614,7 +4618,7 @@ float input_get_sensor_state(unsigned port, unsigned id)
    }
 
    /* Get raw sensor value */
-   raw_value = input_driver_get_sensor(port, input_sensors_enable, id);
+   raw_value = input_driver_get_sensor(port, true, id);
 
    /* Apply calibration offset first, then sensitivity */
    return (raw_value + calibration_offset) * sensitivity;
