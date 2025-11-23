@@ -1999,6 +1999,7 @@ static void android_input_free_input(void *data)
    android_app->accelerometerSensor = NULL;
    android_app->gyroscopeSensor     = NULL;
    android_app->sensorManager       = NULL;
+   android_app->sensor_state_mask   = 0;
 
    android_app->input_alive         = false;
 
@@ -2066,20 +2067,25 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
             if (android_app->sensorEventQueue &&
                   android_app->accelerometerSensor)
             {
-               ASensorEventQueue_enableSensor(android_app->sensorEventQueue,
+               int result = ASensorEventQueue_enableSensor(android_app->sensorEventQueue,
                      android_app->accelerometerSensor);
 
-               /* Events per second (in microseconds). */
-               ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
-                     android_app->accelerometerSensor, (1000L / event_rate)
-                     * 1000);
+               /* Only update state if sensor was successfully enabled */
+               if (result >= 0)
+               {
+                  /* Events per second (in microseconds). */
+                  ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
+                        android_app->accelerometerSensor, (1000L / event_rate)
+                        * 1000);
+
+                  android_app->accelerometer_event_rate = event_rate;
+
+                  BIT64_CLEAR(android_app->sensor_state_mask, RETRO_SENSOR_ACCELEROMETER_DISABLE);
+                  BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_ACCELEROMETER_ENABLE);
+                  return true;
+               }
             }
-
-            android_app->accelerometer_event_rate = event_rate;
-
-            BIT64_CLEAR(android_app->sensor_state_mask, RETRO_SENSOR_ACCELEROMETER_DISABLE);
-            BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_ACCELEROMETER_ENABLE);
-            return true;
+            return false;
 
          case RETRO_SENSOR_ACCELEROMETER_DISABLE:
             if (android_app->sensorEventQueue &&
@@ -2102,20 +2108,25 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
             if (android_app->sensorEventQueue &&
                   android_app->gyroscopeSensor)
             {
-               ASensorEventQueue_enableSensor(android_app->sensorEventQueue,
+               int result = ASensorEventQueue_enableSensor(android_app->sensorEventQueue,
                      android_app->gyroscopeSensor);
 
-               /* Events per second (in microseconds). */
-               ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
-                     android_app->gyroscopeSensor, (1000L / event_rate)
-                     * 1000);
+               /* Only update state if sensor was successfully enabled */
+               if (result >= 0)
+               {
+                  /* Events per second (in microseconds). */
+                  ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
+                        android_app->gyroscopeSensor, (1000L / event_rate)
+                        * 1000);
+
+                  android_app->gyroscope_event_rate = event_rate;
+
+                  BIT64_CLEAR(android_app->sensor_state_mask, RETRO_SENSOR_GYROSCOPE_DISABLE);
+                  BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_GYROSCOPE_ENABLE);
+                  return true;
+               }
             }
-
-            android_app->gyroscope_event_rate = event_rate;
-
-            BIT64_CLEAR(android_app->sensor_state_mask, RETRO_SENSOR_GYROSCOPE_DISABLE);
-            BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_GYROSCOPE_ENABLE);
-            return true;
+            return false;
 
          case RETRO_SENSOR_GYROSCOPE_DISABLE:
             if (android_app->sensorEventQueue &&
