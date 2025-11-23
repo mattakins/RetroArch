@@ -5718,36 +5718,30 @@ static int action_ok_core_options_flush(const char *path,
 static int action_ok_sensor_accelerometer_calibrate(const char *path,
       const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
-   if (input_sensor_calibrate_accelerometer())
-      runloop_msg_queue_push(
-            "Accelerometer calibrated to current position",
-            sizeof("Accelerometer calibrated to current position") - 1,
-            1, 180, true,
-            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
-   else
-      runloop_msg_queue_push(
-            "Accelerometer calibration failed - sensors not enabled",
-            sizeof("Accelerometer calibration failed - sensors not enabled") - 1,
-            1, 180, true,
-            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
+   bool success      = input_sensor_calibrate_accelerometer();
+   const char *_msg  = success ?
+      msg_hash_to_str(MSG_ACCELEROMETER_CALIBRATED) :
+      msg_hash_to_str(MSG_ACCELEROMETER_CALIBRATION_FAILED);
+   unsigned category = success ?
+      MESSAGE_QUEUE_CATEGORY_INFO : MESSAGE_QUEUE_CATEGORY_ERROR;
+
+   runloop_msg_queue_push(_msg, strlen(_msg), 1, 180, true,
+         NULL, MESSAGE_QUEUE_ICON_DEFAULT, category);
    return 0;
 }
 
 static int action_ok_sensor_gyroscope_calibrate(const char *path,
       const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
-   if (input_sensor_calibrate_gyroscope())
-      runloop_msg_queue_push(
-            "Gyroscope calibrated - drift removed",
-            sizeof("Gyroscope calibrated - drift removed") - 1,
-            1, 180, true,
-            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
-   else
-      runloop_msg_queue_push(
-            "Gyroscope calibration failed - sensors not enabled",
-            sizeof("Gyroscope calibration failed - sensors not enabled") - 1,
-            1, 180, true,
-            NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
+   bool success      = input_sensor_calibrate_gyroscope();
+   const char *_msg  = success ?
+      msg_hash_to_str(MSG_GYROSCOPE_CALIBRATED) :
+      msg_hash_to_str(MSG_GYROSCOPE_CALIBRATION_FAILED);
+   unsigned category = success ?
+      MESSAGE_QUEUE_CATEGORY_INFO : MESSAGE_QUEUE_CATEGORY_ERROR;
+
+   runloop_msg_queue_push(_msg, strlen(_msg), 1, 180, true,
+         NULL, MESSAGE_QUEUE_ICON_DEFAULT, category);
    return 0;
 }
 

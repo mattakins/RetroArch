@@ -17112,3 +17112,21 @@ MSG_HASH(
    "Show the 'Game AI' option."
    )
 #endif
+
+/* Sensor calibration messages */
+MSG_HASH(
+   MSG_ACCELEROMETER_CALIBRATED,
+   "Accelerometer calibrated to current position"
+   )
+MSG_HASH(
+   MSG_ACCELEROMETER_CALIBRATION_FAILED,
+   "Accelerometer calibration failed - sensors not enabled"
+   )
+MSG_HASH(
+   MSG_GYROSCOPE_CALIBRATED,
+   "Gyroscope calibrated - drift removed"
+   )
+MSG_HASH(
+   MSG_GYROSCOPE_CALIBRATION_FAILED,
+   "Gyroscope calibration failed - sensors not enabled"
+   )

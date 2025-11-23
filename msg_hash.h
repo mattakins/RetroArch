@@ -4334,6 +4334,12 @@ enum msg_hash_enums
    MENU_LABEL(GAME_AI_SHOW_DEBUG),
    #endif
 
+   /* Sensor calibration messages */
+   MSG_ACCELEROMETER_CALIBRATED,
+   MSG_ACCELEROMETER_CALIBRATION_FAILED,
+   MSG_GYROSCOPE_CALIBRATED,
+   MSG_GYROSCOPE_CALIBRATION_FAILED,
+
    MSG_LAST,
 
    /* Ensure sizeof(enum) == sizeof(int) */

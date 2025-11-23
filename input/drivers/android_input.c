@@ -2090,8 +2090,12 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
          case RETRO_SENSOR_ACCELEROMETER_DISABLE:
             if (android_app->sensorEventQueue &&
                   android_app->accelerometerSensor)
+            {
+               /* Note: Always update state even if disable fails, as we want
+                * to stop attempting to read from a potentially broken sensor */
                ASensorEventQueue_disableSensor(android_app->sensorEventQueue,
                      android_app->accelerometerSensor);
+            }
 
             android->accelerometer_state.x = 0.0f;
             android->accelerometer_state.y = 0.0f;
@@ -2131,8 +2135,12 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
          case RETRO_SENSOR_GYROSCOPE_DISABLE:
             if (android_app->sensorEventQueue &&
                   android_app->gyroscopeSensor)
+            {
+               /* Note: Always update state even if disable fails, as we want
+                * to stop attempting to read from a potentially broken sensor */
                ASensorEventQueue_disableSensor(android_app->sensorEventQueue,
                      android_app->gyroscopeSensor);
+            }
 
             android->gyroscope_state.x = 0.0f;
             android->gyroscope_state.y = 0.0f;
