@@ -1860,13 +1860,7 @@ void driver_uninit(int flags, enum driver_lifetime_flags lifetime_flags)
       video_st->data = NULL;
 
    if ((flags & DRIVER_INPUT_MASK))
-   {
-      /* Disable sensors before destroying input driver to prevent
-       * shader uniform updates from accessing freed/invalid data */
-      input_set_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_DISABLE, 0);
-      input_set_sensor_state(0, RETRO_SENSOR_GYROSCOPE_DISABLE, 0);
       input_state_get_ptr()->current_data = NULL;
-   }
 
    if ((flags & DRIVER_AUDIO_MASK))
       audio_state_get_ptr()->context_audio_data = NULL;

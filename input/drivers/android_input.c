@@ -401,28 +401,6 @@ static void android_input_poll_main_cmd(void)
          break;
 
       case APP_CMD_INIT_WINDOW:
-         {
-            settings_t *settings    = config_get_ptr();
-            bool enable_sensors     = settings && settings->bools.input_sensors_enable;
-
-            /* Re-enable sensors after window surface recreation
-             * (e.g., during device orientation changes) */
-            if (enable_sensors)
-            {
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_ACCELEROMETER_ENABLE,
-                     android_app->accelerometer_event_rate ?
-                        android_app->accelerometer_event_rate :
-                        DEFAULT_ASENSOR_EVENT_RATE);
-
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_GYROSCOPE_ENABLE,
-                     android_app->gyroscope_event_rate ?
-                        android_app->gyroscope_event_rate :
-                        DEFAULT_ASENSOR_EVENT_RATE);
-            }
-         }
-
          slock_lock(android_app->mutex);
          android_app->window = android_app->pendingWindow;
          android_app->reinitRequested = 1;
@@ -453,27 +431,6 @@ static void android_input_poll_main_cmd(void)
                android_app->activity->assetManager);
          break;
       case APP_CMD_TERM_WINDOW:
-         {
-            bool disable_accelerometer = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_ENABLE)) &&
-                        android_app->accelerometerSensor;
-            bool disable_gyroscope     = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)) &&
-                        android_app->gyroscopeSensor;
-
-            /* Disable sensors while window surface is being destroyed
-             * to prevent shader uniform updates with invalid graphics context */
-            if (disable_accelerometer)
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_ACCELEROMETER_DISABLE,
-                     android_app->accelerometer_event_rate);
-
-            if (disable_gyroscope)
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_GYROSCOPE_DISABLE,
-                     android_app->gyroscope_event_rate);
-         }
-
          slock_lock(android_app->mutex);
 
          /* The window is being hidden or closed, clean it up. */
@@ -492,28 +449,25 @@ static void android_input_poll_main_cmd(void)
       case APP_CMD_GAINED_FOCUS:
          {
             runloop_state_t *runloop_st = runloop_state_get_ptr();
-            settings_t *settings         = config_get_ptr();
-            bool enable_sensors          = settings && settings->bools.input_sensors_enable;
+            bool enable_accelerometer   = (android_app->sensor_state_mask &
+                  (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_DISABLE));
+            bool enable_gyroscope       = (android_app->sensor_state_mask &
+                  (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_DISABLE));
+
 
             runloop_st->flags &= ~(RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_unset_stub_frame();
 
-            /* Re-enable sensors based on current setting */
-            if (enable_sensors)
-            {
+            if (enable_accelerometer)
                input_set_sensor_state(0,
                      RETRO_SENSOR_ACCELEROMETER_ENABLE,
-                     android_app->accelerometer_event_rate ?
-                        android_app->accelerometer_event_rate :
-                        DEFAULT_ASENSOR_EVENT_RATE);
+                     android_app->accelerometer_event_rate);
 
+            if (enable_gyroscope)
                input_set_sensor_state(0,
                      RETRO_SENSOR_GYROSCOPE_ENABLE,
-                     android_app->gyroscope_event_rate ?
-                        android_app->gyroscope_event_rate :
-                        DEFAULT_ASENSOR_EVENT_RATE);
-            }
+                     android_app->gyroscope_event_rate);
          }
          slock_lock(android_app->mutex);
          android_app->unfocused = false;
@@ -670,29 +624,6 @@ static void *android_input_init(const char *joypad_driver)
          sizeof(android->device_model));
 
    android_app->input_alive = true;
-
-   /* Enable sensors based on current setting */
-   {
-      settings_t *settings = config_get_ptr();
-      bool enable_sensors  = settings && settings->bools.input_sensors_enable;
-
-      if (enable_sensors)
-      {
-         unsigned rate = android_app->accelerometer_event_rate;
-         if (rate == 0)
-            rate = DEFAULT_ASENSOR_EVENT_RATE;
-
-         android_input_set_sensor_state(android, 0,
-               RETRO_SENSOR_ACCELEROMETER_ENABLE, rate);
-
-         rate = android_app->gyroscope_event_rate;
-         if (rate == 0)
-            rate = DEFAULT_ASENSOR_EVENT_RATE;
-
-         android_input_set_sensor_state(android, 0,
-               RETRO_SENSOR_GYROSCOPE_ENABLE, rate);
-      }
-   }
 
    return android;
 }
