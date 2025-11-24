@@ -551,30 +551,6 @@ static void android_input_poll_main_cmd(void)
          slock_unlock(android_app->mutex);
          break;
 
-      case APP_CMD_WINDOW_RESIZED:
-      case APP_CMD_CONTENT_RECT_CHANGED:
-         {
-            bool disable_accelerometer = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_ENABLE)) &&
-                        android_app->accelerometerSensor;
-            bool disable_gyroscope     = (android_app->sensor_state_mask &
-                  (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)) &&
-                        android_app->gyroscopeSensor;
-
-            /* Temporarily disable sensors during window/content rect changes
-             * to prevent shader uniform updates during surface transitions */
-            if (disable_accelerometer)
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_ACCELEROMETER_DISABLE,
-                     android_app->accelerometer_event_rate);
-
-            if (disable_gyroscope)
-               input_set_sensor_state(0,
-                     RETRO_SENSOR_GYROSCOPE_DISABLE,
-                     android_app->gyroscope_event_rate);
-         }
-         break;
-
       case APP_CMD_DESTROY:
          android_app->destroyRequested = 1;
          break;
