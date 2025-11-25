@@ -625,6 +625,21 @@ static void *android_input_init(const char *joypad_driver)
 
    android_app->input_alive = true;
 
+   /* Enable sensors on startup if setting is enabled (for shader access)
+    * Note: Must call android_input_set_sensor_state directly because
+    * input_set_sensor_state requires the driver to be fully registered,
+    * which hasn't happened yet at this point in initialization */
+   {
+      settings_t *settings = config_get_ptr();
+      if (settings && settings->bools.input_sensors_enable)
+      {
+         android_input_set_sensor_state(android, 0,
+               RETRO_SENSOR_ACCELEROMETER_ENABLE, 0);
+         android_input_set_sensor_state(android, 0,
+               RETRO_SENSOR_GYROSCOPE_ENABLE, 0);
+      }
+   }
+
    return android;
 }
 
