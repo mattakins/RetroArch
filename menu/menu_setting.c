@@ -7121,6 +7121,26 @@ static size_t setting_get_string_representation_uint_libretro_log_level(
    return 0;
 }
 
+static size_t setting_get_string_representation_uint_accelerometer_orientation(
+      rarch_setting_t *setting, char *s, size_t len)
+{
+   if (setting)
+   {
+      switch (*setting->value.target.unsigned_integer)
+      {
+         case 0:
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_0), len);
+         case 1:
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_90), len);
+         case 2:
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_180), len);
+         case 3:
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_270), len);
+      }
+   }
+   return 0;
+}
+
 static size_t setting_get_string_representation_uint_quit_on_close_content(
       rarch_setting_t *setting, char *s, size_t len)
 {
@@ -15982,6 +16002,23 @@ static bool setting_append_list(
                   general_read_handler);
             (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
             menu_settings_list_current_add_range(list, list_info, -5.0, 5.0, 0.1, true, true);
+
+            CONFIG_UINT(
+                  list, list_info,
+                  &settings->uints.input_sensor_accelerometer_orientation,
+                  MENU_ENUM_LABEL_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
+                  MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
+                  0,
+                  &group_info,
+                  &subgroup_info,
+                  parent_group,
+                  general_write_handler,
+                  general_read_handler);
+            (*list)[list_info->index - 1].ui_type   = ST_UI_TYPE_UINT_RADIO_BUTTONS;
+            (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
+            menu_settings_list_current_add_range(list, list_info, 0, 3, 1.0, true, true);
+            (*list)[list_info->index - 1].get_string_representation =
+               &setting_get_string_representation_uint_accelerometer_orientation;
 
             CONFIG_FLOAT(
                   list, list_info,

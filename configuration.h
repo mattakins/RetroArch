@@ -395,6 +395,7 @@ typedef struct settings
 
       unsigned cheevos_appearance_anchor;
       unsigned cheevos_visibility_summary;
+      unsigned input_sensor_accelerometer_orientation;
    } uints;
 
    struct

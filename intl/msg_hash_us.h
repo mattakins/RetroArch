@@ -3516,6 +3516,30 @@ MSG_HASH(
    "Adjust the sensitivity of the Accelerometer."
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
+   "Accelerometer Orientation"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
+   "Rotate accelerometer axes to match device orientation. Use 90° or 270° for landscape mode."
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_0,
+   "0°"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_90,
+   "90°"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_180,
+   "180°"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_270,
+   "270°"
+   )
+MSG_HASH(
    MENU_ENUM_SUBLABEL_INPUT_SENSOR_GYROSCOPE_SENSITIVITY,
   "Adjust the sensitivity of the Gyroscope."
    )

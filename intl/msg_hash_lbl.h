@@ -1899,6 +1899,10 @@ MSG_HASH(
    "input_sensor_accelerometer_sensitivity"
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
+   "input_sensor_accelerometer_orientation"
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_INPUT_SENSOR_GYROSCOPE_SENSITIVITY,
    "input_sensor_gyroscope_sensitivity"
    )

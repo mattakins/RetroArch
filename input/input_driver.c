@@ -4590,6 +4590,8 @@ float input_get_sensor_state(unsigned port, unsigned id)
    float sensitivity         = 1.0f;
    float calibration_offset  = 0.0f;
    float raw_value;
+   unsigned fetch_id         = id;
+   float sign                = 1.0f;
 
    /* Return 0 if settings unavailable (e.g., during driver transitions) */
    if (!settings)
@@ -4607,8 +4609,45 @@ float input_get_sensor_state(unsigned port, unsigned id)
    else if (id >= RETRO_SENSOR_GYROSCOPE_X && id <= RETRO_SENSOR_GYROSCOPE_Z)
       sensitivity = settings->floats.input_sensor_gyroscope_sensitivity;
 
-   /* Get calibration offset for specific axis */
-   switch (id)
+   /* Apply accelerometer orientation rotation for X and Y axes
+    * Rotation transforms (clockwise):
+    * 0°:   (x, y)   -> (x, y)
+    * 90°:  (x, y)   -> (y, -x)
+    * 180°: (x, y)   -> (-x, -y)
+    * 270°: (x, y)   -> (-y, x) */
+   if (id == RETRO_SENSOR_ACCELEROMETER_X || id == RETRO_SENSOR_ACCELEROMETER_Y)
+   {
+      unsigned orientation = settings->uints.input_sensor_accelerometer_orientation;
+      switch (orientation)
+      {
+         case 1: /* 90° CW: X->Y, Y->-X */
+            if (id == RETRO_SENSOR_ACCELEROMETER_X)
+               fetch_id = RETRO_SENSOR_ACCELEROMETER_Y;
+            else
+            {
+               fetch_id = RETRO_SENSOR_ACCELEROMETER_X;
+               sign     = -1.0f;
+            }
+            break;
+         case 2: /* 180°: X->-X, Y->-Y */
+            sign = -1.0f;
+            break;
+         case 3: /* 270° CW: X->-Y, Y->X */
+            if (id == RETRO_SENSOR_ACCELEROMETER_X)
+            {
+               fetch_id = RETRO_SENSOR_ACCELEROMETER_Y;
+               sign     = -1.0f;
+            }
+            else
+               fetch_id = RETRO_SENSOR_ACCELEROMETER_X;
+            break;
+         default: /* 0°: no change */
+            break;
+      }
+   }
+
+   /* Get calibration offset for specific axis (use fetch_id for rotated axes) */
+   switch (fetch_id)
    {
       case RETRO_SENSOR_ACCELEROMETER_X:
          calibration_offset = settings->floats.sensor_accelerometer_offset_x;
@@ -4630,11 +4669,11 @@ float input_get_sensor_state(unsigned port, unsigned id)
          break;
    }
 
-   /* Get raw sensor value */
-   raw_value = input_driver_get_sensor(port, true, id);
+   /* Get raw sensor value (use fetch_id for rotated axes) */
+   raw_value = input_driver_get_sensor(port, true, fetch_id);
 
-   /* Apply calibration offset first, then sensitivity */
-   return (raw_value + calibration_offset) * sensitivity;
+   /* Apply calibration offset first, then sensitivity, then rotation sign */
+   return (raw_value + calibration_offset) * sensitivity * sign;
 }
 
 /**
