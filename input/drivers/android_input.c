@@ -449,11 +449,28 @@ static void android_input_poll_main_cmd(void)
       case APP_CMD_GAINED_FOCUS:
          {
             runloop_state_t *runloop_st = runloop_state_get_ptr();
+            /* Re-enable sensors that were disabled on focus loss */
             bool enable_accelerometer   = (android_app->sensor_state_mask &
                   (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_DISABLE));
             bool enable_gyroscope       = (android_app->sensor_state_mask &
                   (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_DISABLE));
 
+            /* On first focus (no sensor state yet), enable if setting is on.
+             * This handles shader sensor access without going through cores. */
+            if (!enable_accelerometer &&
+                !(android_app->sensor_state_mask & (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_ENABLE)))
+            {
+               settings_t *settings = config_get_ptr();
+               if (settings && settings->bools.input_sensors_enable)
+                  enable_accelerometer = true;
+            }
+            if (!enable_gyroscope &&
+                !(android_app->sensor_state_mask & (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)))
+            {
+               settings_t *settings = config_get_ptr();
+               if (settings && settings->bools.input_sensors_enable)
+                  enable_gyroscope = true;
+            }
 
             runloop_st->flags &= ~(RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
@@ -624,21 +641,6 @@ static void *android_input_init(const char *joypad_driver)
          sizeof(android->device_model));
 
    android_app->input_alive = true;
-
-   /* Enable sensors on startup if setting is enabled (for shader access)
-    * Note: Must call android_input_set_sensor_state directly because
-    * input_set_sensor_state requires the driver to be fully registered,
-    * which hasn't happened yet at this point in initialization */
-   {
-      settings_t *settings = config_get_ptr();
-      if (settings && settings->bools.input_sensors_enable)
-      {
-         android_input_set_sensor_state(android, 0,
-               RETRO_SENSOR_ACCELEROMETER_ENABLE, 0);
-         android_input_set_sensor_state(android, 0,
-               RETRO_SENSOR_GYROSCOPE_ENABLE, 0);
-      }
-   }
 
    return android;
 }
