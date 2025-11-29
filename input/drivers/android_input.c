@@ -472,18 +472,6 @@ static void android_input_poll_main_cmd(void)
                   enable_gyroscope = true;
             }
 
-            /* Detect screen rotation for accelerometer orientation auto-detection */
-            {
-               JNIEnv *env = jni_thread_getenv();
-               if (env && android_app->getScreenRotation)
-               {
-                  int rotation = 0;
-                  CALL_INT_METHOD(env, rotation,
-                        android_app->activity->clazz, android_app->getScreenRotation);
-                  android_app->detected_screen_rotation = (unsigned)rotation;
-               }
-            }
-
             runloop_st->flags &= ~(RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_unset_stub_frame();
@@ -497,6 +485,19 @@ static void android_input_poll_main_cmd(void)
                input_set_sensor_state(0,
                      RETRO_SENSOR_GYROSCOPE_ENABLE,
                      android_app->gyroscope_event_rate);
+
+            /* Detect screen rotation for accelerometer orientation auto-detection
+             * Done after sensor enable to avoid JNI call interfering with sensors */
+            {
+               JNIEnv *env = jni_thread_getenv();
+               if (env && android_app->getScreenRotation)
+               {
+                  int rotation = 0;
+                  CALL_INT_METHOD(env, rotation,
+                        android_app->activity->clazz, android_app->getScreenRotation);
+                  android_app->detected_screen_rotation = (unsigned)rotation;
+               }
+            }
          }
          slock_lock(android_app->mutex);
          android_app->unfocused = false;
