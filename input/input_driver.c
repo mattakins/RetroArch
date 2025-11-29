@@ -4538,13 +4538,11 @@ bool input_set_sensor_state(unsigned port,
       enum retro_sensor_action action, unsigned rate)
 {
    settings_t *settings        = config_get_ptr();
-   bool input_sensors_enable;
+   /* Default to enabled if settings not loaded yet (matches config default) */
+   bool input_sensors_enable   = settings
+      ? settings->bools.input_sensors_enable
+      : true;
 
-   /* Fail safely if settings unavailable */
-   if (!settings)
-      return false;
-
-   input_sensors_enable = settings->bools.input_sensors_enable;
    return input_driver_set_sensor(
       port, input_sensors_enable, action, rate);
 }
