@@ -3521,7 +3521,11 @@ MSG_HASH(
    )
 MSG_HASH(
    MENU_ENUM_SUBLABEL_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
-   "Rotate accelerometer axes to match device orientation. Use 90° or 270° for landscape mode."
+   "Rotate accelerometer axes to match device orientation. Auto detects from screen rotation."
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_AUTO,
+   "Auto"
    )
 MSG_HASH(
    MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_0,

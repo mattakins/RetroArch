@@ -221,6 +221,11 @@ public class RetroActivityCommon extends NativeActivity
       return new String[0];
   }
 
+  public int getScreenRotation() {
+    WindowManager windowManager = (WindowManager)getSystemService(Context.WINDOW_SERVICE);
+    return windowManager.getDefaultDisplay().getRotation();
+  }
+
 // https://stackoverflow.com/questions/4553650/how-to-check-device-natural-default-orientation-on-android-i-e-get-landscape/4555528#4555528
   public int getDeviceDefaultOrientation() {
     WindowManager windowManager = (WindowManager)getSystemService(Context.WINDOW_SERVICE);

@@ -7129,12 +7129,14 @@ static size_t setting_get_string_representation_uint_accelerometer_orientation(
       switch (*setting->value.target.unsigned_integer)
       {
          case 0:
-            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_0), len);
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_AUTO), len);
          case 1:
-            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_90), len);
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_0), len);
          case 2:
-            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_180), len);
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_90), len);
          case 3:
+            return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_180), len);
+         case 4:
             return strlcpy(s, msg_hash_to_str(MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_270), len);
       }
    }
@@ -16016,7 +16018,7 @@ static bool setting_append_list(
                   general_read_handler);
             (*list)[list_info->index - 1].ui_type   = ST_UI_TYPE_UINT_RADIO_BUTTONS;
             (*list)[list_info->index - 1].action_ok = &setting_action_ok_uint;
-            menu_settings_list_current_add_range(list, list_info, 0, 3, 1.0, true, true);
+            menu_settings_list_current_add_range(list, list_info, 0, 4, 1.0, true, true);
             (*list)[list_info->index - 1].get_string_representation =
                &setting_get_string_representation_uint_accelerometer_orientation;
 

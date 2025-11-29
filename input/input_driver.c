@@ -65,6 +65,10 @@
 #include "../tasks/tasks_internal.h"
 #include "../verbosity.h"
 
+#ifdef ANDROID
+#include "../frontend/drivers/platform_unix.h"
+#endif
+
 #include "../ai/game_ai.h"
 
 #define HOLD_BTN_DELAY_SEC 2
@@ -4610,6 +4614,7 @@ float input_get_sensor_state(unsigned port, unsigned id)
       sensitivity = settings->floats.input_sensor_gyroscope_sensitivity;
 
    /* Apply accelerometer orientation rotation for X and Y axes
+    * Setting values: 0=Auto, 1=0°, 2=90°, 3=180°, 4=270°
     * Rotation transforms (clockwise):
     * 0°:   (x, y)   -> (x, y)
     * 90°:  (x, y)   -> (y, -x)
@@ -4617,8 +4622,24 @@ float input_get_sensor_state(unsigned port, unsigned id)
     * 270°: (x, y)   -> (-y, x) */
    if (id == RETRO_SENSOR_ACCELEROMETER_X || id == RETRO_SENSOR_ACCELEROMETER_Y)
    {
-      unsigned orientation = settings->uints.input_sensor_accelerometer_orientation;
-      switch (orientation)
+      unsigned orientation_setting = settings->uints.input_sensor_accelerometer_orientation;
+      unsigned rotation = 0;
+
+      if (orientation_setting == 0)
+      {
+         /* Auto: detect from platform */
+#ifdef ANDROID
+         if (g_android)
+            rotation = g_android->detected_screen_rotation;
+#endif
+      }
+      else
+      {
+         /* Manual: setting 1=0°, 2=90°, 3=180°, 4=270° */
+         rotation = orientation_setting - 1;
+      }
+
+      switch (rotation)
       {
          case 1: /* 90° CW: X->Y, Y->-X */
             if (id == RETRO_SENSOR_ACCELEROMETER_X)

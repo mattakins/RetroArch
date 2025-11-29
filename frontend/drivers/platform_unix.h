@@ -145,6 +145,7 @@ struct android_app
    const ASensor* accelerometerSensor;
    const ASensor* gyroscopeSensor;
    uint64_t sensor_state_mask;
+   unsigned detected_screen_rotation;
    char current_ime[NAME_MAX_LENGTH];
    bool input_alive;
    int16_t analog_state[DEFAULT_MAX_PADS][MAX_AXIS];
@@ -166,6 +167,7 @@ struct android_app
    jmethodID getBatteryLevel;
    jmethodID setSustainedPerformanceMode;
    jmethodID setScreenOrientation;
+   jmethodID getScreenRotation;
    jmethodID getUserLanguageString;
    jmethodID doVibrate;
    jmethodID doHapticFeedback;
