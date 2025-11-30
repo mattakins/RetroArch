@@ -223,7 +223,15 @@ public class RetroActivityCommon extends NativeActivity
 
   public int getScreenRotation() {
     WindowManager windowManager = (WindowManager)getSystemService(Context.WINDOW_SERVICE);
-    return windowManager.getDefaultDisplay().getRotation();
+    int rotation = windowManager.getDefaultDisplay().getRotation();
+
+    // Adjust for devices with natural landscape orientation (gaming handhelds).
+    // Their accelerometer axes are rotated 180° from portrait-based assumptions.
+    if (getDeviceDefaultOrientation() == Configuration.ORIENTATION_LANDSCAPE) {
+      rotation = (rotation + 2) % 4;
+    }
+
+    return rotation;
   }
 
 // https://stackoverflow.com/questions/4553650/how-to-check-device-natural-default-orientation-on-android-i-e-get-landscape/4555528#4555528
