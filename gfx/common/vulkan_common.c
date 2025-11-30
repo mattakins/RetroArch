@@ -2140,26 +2140,16 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
          RARCH_LOG("  Format[%u]: format=0x%x, colorSpace=0x%x\n", i, formats[i].format, formats[i].colorSpace);
       }
       
-      /* Check if Android supports HDR formats (HDR10 ST2084 or Display P3) */
+      /* Check if Android supports HDR10 ST2084 format */
       bool android_vulkan_hdr = false;
       for (i = 0; i < format_count; i++)
       {
-         /* Check for HDR10 ST.2084 first (preferred) */
          if ((formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) &&
              (formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
               formats[i].format == VK_FORMAT_A2R10G10B10_UNORM_PACK32))
          {
             android_vulkan_hdr = true;
             RARCH_LOG("[Vulkan Android] Found HDR10 ST2084 format: 0x%x\n", formats[i].format);
-            break;
-         }
-         /* Fallback to Display P3 HDR if available */
-         else if ((formats[i].colorSpace == VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT) &&
-                  (formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
-                   formats[i].format == VK_FORMAT_A2R10G10B10_UNORM_PACK32))
-         {
-            android_vulkan_hdr = true;
-            RARCH_LOG("[Vulkan Android] Found Display P3 HDR format: 0x%x\n", formats[i].format);
             break;
          }
       }
@@ -2198,23 +2188,11 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
 
          for (i = 0; i < format_count; i++)
          {
-            /* Prefer HDR10 ST.2084 if available */
             if (     (vulkan_is_hdr10_format(formats[i].format))
                   && (formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT))
             {
                format = formats[i];
-               /* Show HDR menu if Vulkan format is available (matches desktop behavior) */
                video_driver_set_hdr_support();
-               break;
-            }
-            /* Fallback to Display P3 HDR */
-            else if ((vulkan_is_hdr10_format(formats[i].format))
-                  && (formats[i].colorSpace == VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT))
-            {
-               format = formats[i];
-               /* Show HDR menu if Vulkan format is available */
-               video_driver_set_hdr_support();
-               RARCH_LOG("[Vulkan] Using Display P3 HDR format instead of HDR10\n");
                break;
             }
          }

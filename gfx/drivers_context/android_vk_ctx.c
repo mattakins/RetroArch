@@ -192,13 +192,12 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
    
 #ifdef ANDROID
    /* Configure native window for HDR BEFORE surface creation */
-   /* Always attempt HDR configuration - Vulkan will validate actual capability */
-   if (android_app->window)
+   /* Only set 10-bit format if HDR is enabled in settings */
+   settings_t *settings = config_get_ptr();
+   if (android_app->window && settings && settings->bools.video_hdr_enable)
    {
-      /* Set window format to 10-bit for HDR support */
-      /* Must be done BEFORE Vulkan surface creation */
-      int32_t result = ANativeWindow_setBuffersGeometry(android_app->window, 
-                                                       and->width, and->height, 
+      int32_t result = ANativeWindow_setBuffersGeometry(android_app->window,
+                                                       and->width, and->height,
                                                        WINDOW_FORMAT_RGBA_1010102);
       if (result == 0)
       {
