@@ -4611,17 +4611,22 @@ float input_get_sensor_state(unsigned port, unsigned id)
    else if (id >= RETRO_SENSOR_GYROSCOPE_X && id <= RETRO_SENSOR_GYROSCOPE_Z)
       sensitivity = settings->floats.input_sensor_gyroscope_sensitivity;
 
-   /* Apply accelerometer orientation rotation for X and Y axes
+   /* Apply sensor orientation rotation for X and Y axes
     * Setting values: 0=Auto, 1=0°, 2=90°, 3=180°, 4=270°
     * Rotation transforms (clockwise):
     * 0°:   (x, y)   -> (x, y)
     * 90°:  (x, y)   -> (y, -x)
     * 180°: (x, y)   -> (-x, -y)
-    * 270°: (x, y)   -> (-y, x) */
-   if (id == RETRO_SENSOR_ACCELEROMETER_X || id == RETRO_SENSOR_ACCELEROMETER_Y)
+    * 270°: (x, y)   -> (-y, x)
+    * Both accelerometer and gyroscope use the same orientation setting
+    * since they share the same physical sensor orientation */
+   if (id == RETRO_SENSOR_ACCELEROMETER_X || id == RETRO_SENSOR_ACCELEROMETER_Y ||
+       id == RETRO_SENSOR_GYROSCOPE_X || id == RETRO_SENSOR_GYROSCOPE_Y)
    {
       unsigned orientation_setting = settings->uints.input_sensor_accelerometer_orientation;
       unsigned rotation = 0;
+      bool is_gyro = (id == RETRO_SENSOR_GYROSCOPE_X || id == RETRO_SENSOR_GYROSCOPE_Y);
+      bool is_x_axis = (id == RETRO_SENSOR_ACCELEROMETER_X || id == RETRO_SENSOR_GYROSCOPE_X);
 
       if (orientation_setting == 0)
       {
@@ -4640,11 +4645,11 @@ float input_get_sensor_state(unsigned port, unsigned id)
       switch (rotation)
       {
          case 1: /* 90° CW: X->Y, Y->-X */
-            if (id == RETRO_SENSOR_ACCELEROMETER_X)
-               fetch_id = RETRO_SENSOR_ACCELEROMETER_Y;
+            if (is_x_axis)
+               fetch_id = is_gyro ? RETRO_SENSOR_GYROSCOPE_Y : RETRO_SENSOR_ACCELEROMETER_Y;
             else
             {
-               fetch_id = RETRO_SENSOR_ACCELEROMETER_X;
+               fetch_id = is_gyro ? RETRO_SENSOR_GYROSCOPE_X : RETRO_SENSOR_ACCELEROMETER_X;
                sign     = -1.0f;
             }
             break;
@@ -4652,13 +4657,13 @@ float input_get_sensor_state(unsigned port, unsigned id)
             sign = -1.0f;
             break;
          case 3: /* 270° CW: X->-Y, Y->X */
-            if (id == RETRO_SENSOR_ACCELEROMETER_X)
+            if (is_x_axis)
             {
-               fetch_id = RETRO_SENSOR_ACCELEROMETER_Y;
+               fetch_id = is_gyro ? RETRO_SENSOR_GYROSCOPE_Y : RETRO_SENSOR_ACCELEROMETER_Y;
                sign     = -1.0f;
             }
             else
-               fetch_id = RETRO_SENSOR_ACCELEROMETER_X;
+               fetch_id = is_gyro ? RETRO_SENSOR_GYROSCOPE_X : RETRO_SENSOR_ACCELEROMETER_X;
             break;
          default: /* 0°: no change */
             break;

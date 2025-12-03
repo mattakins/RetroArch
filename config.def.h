@@ -1626,7 +1626,7 @@
 
 /* Enables accelerometer/gyroscope/illuminance
  * sensor input, if supported */
- #define DEFAULT_INPUT_SENSORS_ENABLE true
+#define DEFAULT_INPUT_SENSORS_ENABLE true
 
 /* Automatically enable game focus when running or
  * resuming content */

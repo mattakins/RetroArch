@@ -763,7 +763,7 @@ static void gl_glsl_find_uniforms(glsl_shader_data_t *glsl,
    uni->original_fps         = gl_glsl_get_uniform(glsl, prog, "OriginalFPS");
    uni->rotation         = gl_glsl_get_uniform(glsl, prog, "Rotation");
    uni->core_aspect      = gl_glsl_get_uniform(glsl, prog, "OriginalAspect");
-   uni->core_aspect_rot  = gl_glsl_get_uniform(glsl, prog, "OriginalAspectRotAted");
+   uni->core_aspect_rot  = gl_glsl_get_uniform(glsl, prog, "OriginalAspectRotated");
 
    uni->gyroscope_x      = gl_glsl_get_uniform(glsl, prog, "GyroscopeX");
    uni->gyroscope_y      = gl_glsl_get_uniform(glsl, prog, "GyroscopeY");

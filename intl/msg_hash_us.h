@@ -3517,11 +3517,11 @@ MSG_HASH(
    )
 MSG_HASH(
    MENU_ENUM_LABEL_VALUE_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
-   "Accelerometer Orientation"
+   "Sensor Orientation"
    )
 MSG_HASH(
    MENU_ENUM_SUBLABEL_INPUT_SENSOR_ACCELEROMETER_ORIENTATION,
-   "Rotate accelerometer axes to match device orientation. Auto detects from screen rotation."
+   "Rotate accelerometer and gyroscope axes to match device orientation. Auto detects from screen rotation."
    )
 MSG_HASH(
    MENU_ENUM_LABEL_VALUE_ACCELEROMETER_ORIENTATION_AUTO,
