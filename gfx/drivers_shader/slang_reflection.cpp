@@ -31,6 +31,7 @@ static const char *texture_semantic_names[] = {
    "PassOutput",
    "PassFeedback",
    "User",
+   "DepthMap",
    nullptr
 };
 
@@ -41,6 +42,7 @@ static const char *texture_semantic_uniform_names[] = {
    "PassOutputSize",
    "PassFeedbackSize",
    "UserSize",
+   "DepthMapSize",
    nullptr
 };
 

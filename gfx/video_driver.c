@@ -1828,6 +1828,52 @@ void video_driver_set_size(unsigned width, unsigned height)
 #endif
 }
 
+void video_driver_set_depth_buffer(const void *data,
+      unsigned width, unsigned height, size_t pitch)
+{
+   video_driver_state_t *video_st = &video_driver_st;
+
+   if (!data || !width || !height)
+   {
+      video_st->depth_buffer_valid  = false;
+      video_st->depth_buffer_data   = NULL;
+      video_st->depth_buffer_width  = 0;
+      video_st->depth_buffer_height = 0;
+      video_st->depth_buffer_pitch  = 0;
+      return;
+   }
+
+   video_st->depth_buffer_data   = data;
+   video_st->depth_buffer_width  = width;
+   video_st->depth_buffer_height = height;
+   video_st->depth_buffer_pitch  = pitch;
+   video_st->depth_buffer_valid  = true;
+}
+
+bool video_driver_has_depth_buffer(void)
+{
+   video_driver_state_t *video_st = &video_driver_st;
+   return video_st->depth_buffer_valid;
+}
+
+const void *video_driver_get_depth_buffer(
+      unsigned *width, unsigned *height, size_t *pitch)
+{
+   video_driver_state_t *video_st = &video_driver_st;
+
+   if (!video_st->depth_buffer_valid)
+      return NULL;
+
+   if (width)
+      *width  = video_st->depth_buffer_width;
+   if (height)
+      *height = video_st->depth_buffer_height;
+   if (pitch)
+      *pitch  = video_st->depth_buffer_pitch;
+
+   return video_st->depth_buffer_data;
+}
+
 /**
  * video_monitor_fps_statistics
  * @refresh_rate       : Monitor refresh rate.

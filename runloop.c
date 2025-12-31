@@ -3339,6 +3339,27 @@ bool runloop_environment_cb(unsigned cmd, void *data)
          break;
       }
 
+      case RETRO_ENVIRONMENT_SET_DEPTH_BUFFER:
+      {
+         const struct retro_depth_buffer_info *info =
+            (const struct retro_depth_buffer_info *)data;
+
+         if (info && info->data && info->width && info->height)
+         {
+            video_driver_set_depth_buffer(
+               info->data,
+               info->width,
+               info->height,
+               info->pitch);
+         }
+         else
+         {
+            /* NULL or invalid - clear depth buffer */
+            video_driver_set_depth_buffer(NULL, 0, 0, 0);
+         }
+         break;
+      }
+
       case RETRO_ENVIRONMENT_GET_TARGET_REFRESH_RATE:
       {
          /* Try to use the polled refresh rate first.  */

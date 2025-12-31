@@ -2587,6 +2587,51 @@ enum retro_mod
 */
 #define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE (81 | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
+/**
+ * Provides auxiliary depth/layer information for shader effects.
+ *
+ * Cores can optionally provide a depth buffer alongside the color
+ * framebuffer to enable advanced shader effects like parallax.
+ *
+ * The depth buffer should contain uint8_t values (0-255) representing
+ * the layer depth at each pixel, where:
+ *   - 0   = farthest layer (background)
+ *   - 255 = nearest layer (foreground/sprites)
+ *
+ * For 2D systems with discrete layers (GB, GBA, SNES), use fixed values:
+ *   - Game Boy: BG=85, Window=170, Sprite=255
+ *   - GBA: BG3=51, BG2=102, BG1=153, BG0=204, OBJ=255
+ *
+ * Format: R8 (single channel, 8-bit unsigned)
+ * Size: Must match color framebuffer dimensions
+ *
+ * Call this environment each frame after video_cb(), or skip if
+ * depth data is unavailable. Shaders should gracefully degrade
+ * when no depth buffer is provided.
+ *
+ * @param[in] data <tt>const struct retro_depth_buffer_info *</tt>.
+ * Pointer to depth buffer info, or NULL to clear.
+ * @return \c true if the frontend supports depth buffers.
+ * @since API version 1.x (experimental)
+ */
+#define RETRO_ENVIRONMENT_SET_DEPTH_BUFFER (82 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/**
+ * Depth buffer information provided by cores for shader effects.
+ * @see RETRO_ENVIRONMENT_SET_DEPTH_BUFFER
+ */
+struct retro_depth_buffer_info
+{
+   /** Pointer to depth data (R8 format, uint8_t per pixel) */
+   const void *data;
+   /** Width in pixels (must match color framebuffer) */
+   unsigned width;
+   /** Height in pixels (must match color framebuffer) */
+   unsigned height;
+   /** Bytes per row (typically equal to width) */
+   size_t pitch;
+};
+
 /**@}*/
 
 /**

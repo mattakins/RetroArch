@@ -54,6 +54,13 @@ enum slang_texture_semantic
     */
    SLANG_TEXTURE_SEMANTIC_USER             = 5,
 
+   /* Depth/layer buffer provided by core for parallax effects.
+    * Canonical name: "DepthMap".
+    * Size name: "DepthMapSize".
+    * Contains R8 layer depth values (0=far, 255=near).
+    */
+   SLANG_TEXTURE_SEMANTIC_DEPTH            = 6,
+
    SLANG_NUM_TEXTURE_SEMANTICS,
    SLANG_INVALID_TEXTURE_SEMANTIC       = -1
 };

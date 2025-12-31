@@ -825,6 +825,13 @@ typedef struct
 
    const void *frame_cache_data;
 
+   /* Depth buffer from core for shader parallax effects */
+   const void *depth_buffer_data;
+   unsigned    depth_buffer_width;
+   unsigned    depth_buffer_height;
+   size_t      depth_buffer_pitch;
+   bool        depth_buffer_valid;
+
    const struct
       retro_hw_render_context_negotiation_interface *
       hw_render_context_negotiation;
@@ -1010,6 +1017,34 @@ const char *video_driver_get_ident(void);
 void video_driver_get_size(unsigned *width, unsigned *height);
 
 void video_driver_set_size(unsigned width, unsigned height);
+
+/**
+ * video_driver_set_depth_buffer:
+ * @data    : Pointer to depth data (R8 format)
+ * @width   : Width in pixels
+ * @height  : Height in pixels
+ * @pitch   : Bytes per row
+ *
+ * Sets the depth/layer buffer from core for shader parallax effects.
+ * Pass NULL data to invalidate.
+ **/
+void video_driver_set_depth_buffer(const void *data,
+      unsigned width, unsigned height, size_t pitch);
+
+/**
+ * video_driver_has_depth_buffer:
+ *
+ * Returns true if a valid depth buffer is available.
+ **/
+bool video_driver_has_depth_buffer(void);
+
+/**
+ * video_driver_get_depth_buffer:
+ *
+ * Gets depth buffer info. Returns NULL if not available.
+ **/
+const void *video_driver_get_depth_buffer(
+      unsigned *width, unsigned *height, size_t *pitch);
 
 float video_driver_get_aspect_ratio(void);
 

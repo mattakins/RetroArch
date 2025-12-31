@@ -38,6 +38,7 @@
 
 #include "../../retroarch.h"
 #include "../../verbosity.h"
+#include "../video_driver.h"
 #include "../../msg_hash.h"
 #include "../../configuration.h"
 #include "../../input/input_driver.h"
@@ -517,6 +518,12 @@ struct CommonResources
    GLuint quad_program = 0;
    GLuint quad_vbo = 0;
    gl3_buffer_locations quad_loc = {};
+
+   /* Depth/layer buffer from core for parallax effects */
+   GLuint depth_texture = 0;
+   unsigned depth_width = 0;
+   unsigned depth_height = 0;
+   bool depth_valid = false;
 };
 
 CommonResources::CommonResources()
@@ -544,6 +551,8 @@ CommonResources::~CommonResources()
       glDeleteProgram(quad_program);
    if (quad_vbo != 0)
       glDeleteBuffers(1, &quad_vbo);
+   if (depth_texture != 0)
+      glDeleteTextures(1, &depth_texture);
 }
 
 class Framebuffer
@@ -1125,6 +1134,7 @@ bool Pass::init_pipeline()
    reflect_parameter_array("PassOutputSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_PASS_OUTPUT]);
    reflect_parameter_array("PassFeedbackSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_PASS_FEEDBACK]);
    reflect_parameter_array("UserSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_USER]);
+   reflect_parameter("DepthMapSize", reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_DEPTH][0]);
    for (auto &m : common->texture_semantic_uniform_map)
    {
       auto &array = reflection.semantic_textures[m.second.semantic];
@@ -1653,6 +1663,35 @@ void Pass::build_semantics(uint8_t *buffer,
       build_semantic_texture_array(buffer,
             SLANG_TEXTURE_SEMANTIC_USER, i,
             common->luts[i]->get_texture());
+
+   /* Depth map from core. */
+   if (common->depth_valid && common->depth_texture != 0)
+   {
+      /* Build size uniform */
+      if (buffer && reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_DEPTH][0].uniform)
+      {
+         float depth_size[4] = {
+            (float)common->depth_width,
+            (float)common->depth_height,
+            1.0f / (float)common->depth_width,
+            1.0f / (float)common->depth_height
+         };
+         size_t offset = reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_DEPTH][0].ubo_offset;
+         memcpy(buffer + offset, depth_size, sizeof(depth_size));
+      }
+
+      /* Bind texture */
+      if (reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_DEPTH][0].texture)
+      {
+         unsigned binding = reflection.semantic_textures[SLANG_TEXTURE_SEMANTIC_DEPTH][0].binding;
+         glActiveTexture(GL_TEXTURE0 + binding);
+         glBindTexture(GL_TEXTURE_2D, common->depth_texture);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      }
+   }
 }
 
 void Pass::build_commands(
@@ -1891,6 +1930,7 @@ private:
    void clear_history_and_feedback();
    void update_feedback_info();
    void update_history_info();
+   void update_depth_buffer();
 };
 
 
@@ -1940,6 +1980,50 @@ void gl3_filter_chain::update_feedback_info()
    }
 }
 
+void gl3_filter_chain::update_depth_buffer()
+{
+   unsigned width, height;
+   size_t pitch;
+   const void *data = video_driver_get_depth_buffer(&width, &height, &pitch);
+
+   if (!data || !width || !height)
+   {
+      common.depth_valid = false;
+      return;
+   }
+
+   /* Create or resize texture if needed */
+   if (common.depth_texture == 0 ||
+       common.depth_width != width ||
+       common.depth_height != height)
+   {
+      if (common.depth_texture != 0)
+         glDeleteTextures(1, &common.depth_texture);
+
+      glGenTextures(1, &common.depth_texture);
+      glBindTexture(GL_TEXTURE_2D, common.depth_texture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+      common.depth_width = width;
+      common.depth_height = height;
+   }
+   else
+   {
+      glBindTexture(GL_TEXTURE_2D, common.depth_texture);
+   }
+
+   /* Upload depth data (R8 format) */
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
+         width, height, 0,
+         GL_RED, GL_UNSIGNED_BYTE,
+         data);
+
+   common.depth_valid = true;
+}
+
 void gl3_filter_chain::build_offscreen_passes(const gl3_viewport &vp)
 {
    unsigned i;
@@ -1951,6 +2035,9 @@ void gl3_filter_chain::build_offscreen_passes(const gl3_viewport &vp)
       clear_history_and_feedback();
       require_clear = false;
    }
+
+   /* Update depth buffer from core if available */
+   update_depth_buffer();
 
    update_history_info();
    if (!common.framebuffer_feedback.empty())
@@ -2026,6 +2113,9 @@ void gl3_filter_chain::build_viewport_pass(
       clear_history_and_feedback();
       require_clear = false;
    }
+
+   /* Update depth buffer from core if available */
+   update_depth_buffer();
 
    gl3_shader::Texture source;
    const gl3_shader::Texture original = {
