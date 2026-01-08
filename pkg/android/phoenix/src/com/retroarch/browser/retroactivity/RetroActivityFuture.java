@@ -83,11 +83,12 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     // Check if we're trying to launch different content
     if ((newRom != null && !newRom.equals(currentRom)) ||
         (newCore != null && !newCore.equals(currentCore))) {
-      // Different game content - start fresh instance then exit
+      // Different game content - start fresh instance
+      // finish() triggers onDestroy() which waits for native cleanup (saves)
       Intent restartIntent = new Intent(intent);
-      restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+      restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
       startActivity(restartIntent);
-      System.exit(0);
+      finish();
     } else {
       // Same content, just update intent
       setIntent(intent);

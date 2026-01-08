@@ -51,8 +51,8 @@ android {
       dimension "variant"
     }
     aarch64 {
-      applicationIdSuffix '.aarch64'
-      resValue "string", "app_name", "RetroArch (AArch64)"
+      applicationIdSuffix '.aarch64.clean'
+      resValue "string", "app_name", "RA Clean"
       buildConfigField "boolean", "PLAY_STORE_BUILD", "false"
 
       dimension "variant"
