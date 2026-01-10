@@ -31,10 +31,6 @@
  * DPI-aware scaling factors */
 #define REFERENCE_DPI 96.0f
 
-/* 'OZONE_SIDEBAR_WIDTH' must be kept in sync
- * with Ozone driver metrics */
-#define OZONE_SIDEBAR_WIDTH 408
-
 /* Small 1x1 white texture used for blending purposes */
 static uintptr_t gfx_white_texture;
 
@@ -322,16 +318,6 @@ float gfx_display_get_dpi_scale(
        || (p_disp->menu_driver_id != last_menu_driver_id))
    {
       adjusted_scale            = scale * menu_scale_factor;
-#ifdef HAVE_OZONE
-      if (p_disp->menu_driver_id == MENU_DRIVER_ID_OZONE)
-      {
-         /* Ozone has a capped scale factor */
-         float new_width        = (float)width * 0.3333333f;
-         if (((float)OZONE_SIDEBAR_WIDTH * adjusted_scale)
-               > new_width)
-            adjusted_scale      = (new_width / (float)OZONE_SIDEBAR_WIDTH);
-      }
-#endif
       adjusted_scale            = (adjusted_scale > 0.0001f) ? adjusted_scale : 1.0f;
       last_menu_scale_factor    = menu_scale_factor;
       last_menu_driver_id       = p_disp->menu_driver_id;
