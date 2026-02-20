@@ -45,6 +45,9 @@
 
 #if defined(WEBOS)
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "input/common/wayland_common_webos.h"
 #endif
 
@@ -72,6 +75,9 @@
 #include <libretro.h>
 #define VFS_FRONTEND
 #include <vfs/vfs_implementation.h>
+#ifdef HAVE_SMBCLIENT
+#include "libretro-common/vfs/vfs_implementation_smb.h"
+#endif
 
 #include <features/features_cpu.h>
 
@@ -349,6 +355,27 @@ static struct global global_driver_st     = {0}; /* retro_time_t alignment */
 static void retro_frame_null(const void *data, unsigned width,
       unsigned height, size_t pitch) { }
 void retro_input_poll_null(void) { }
+
+#ifdef HAVE_SMBCLIENT
+static struct smb_settings smb_global_cfg;
+
+void retroarch_smb_init(void)
+{
+   settings_t *settings = config_get_ptr();
+
+   smb_global_cfg.server_address = settings->arrays.smb_client_server_address;
+   smb_global_cfg.share = settings->arrays.smb_client_share;
+   smb_global_cfg.username = settings->arrays.smb_client_username;
+   smb_global_cfg.password = settings->arrays.smb_client_password;
+   smb_global_cfg.workgroup = settings->arrays.smb_client_workgroup;
+   smb_global_cfg.timeout = settings->uints.smb_client_timeout;
+   smb_global_cfg.num_contexts = settings->uints.smb_client_num_contexts;
+   smb_global_cfg.auth_mode = settings->uints.smb_client_auth_mode;
+   smb_global_cfg.subdir = settings->arrays.smb_client_subdir;
+
+   smb_init_cfg(&smb_global_cfg);
+}
+#endif
 
 static location_driver_t location_null = {
    NULL,
@@ -4234,6 +4261,10 @@ bool command_event(enum event_command cmd, void *data)
             video_driver_state_t
                *video_st                         = video_state_get_ptr();
             rarch_system_info_t *sys_info        = &runloop_st->system;
+            
+            /* Restore unpaused state */
+            runloop_st->paused_hotkey = false;
+            command_event(CMD_EVENT_UNPAUSE, NULL);
 
             /* The platform that uses ram_state_save calls it when the content
              * ends and writes it to a file */
@@ -4745,7 +4776,9 @@ bool command_event(enum event_command cmd, void *data)
             unsigned accessibility_narrator_speech_speed
                                  = settings->uints.accessibility_narrator_speech_speed;
 #endif
-
+            /* Allow pause toggling only when there is an active core. */
+            if (!(runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING))
+               break;
 #ifdef HAVE_NETWORKING
             if (!netplay_driver_ctl(RARCH_NETPLAY_CTL_ALLOW_PAUSE, NULL))
                break;
@@ -4786,6 +4819,9 @@ bool command_event(enum event_command cmd, void *data)
          runloop_pause_checks();
          break;
       case CMD_EVENT_PAUSE:
+         /* Allow pausing only when there is an active core. */
+         if (!(runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING))
+            break;
 #ifdef HAVE_NETWORKING
          if (!netplay_driver_ctl(RARCH_NETPLAY_CTL_ALLOW_PAUSE, NULL))
             break;
@@ -5130,27 +5166,7 @@ bool command_event(enum event_command cmd, void *data)
                return false;
 
             if (disk_control_enabled(&sys_info->disk_control))
-            {
-#if defined(HAVE_MENU)
-               struct menu_state *menu_st = menu_state_get_ptr();
-               /* Get initial disk eject state */
-               bool initial_disk_ejected  = disk_control_get_eject_state(&sys_info->disk_control);
-#endif
-               /* Append disk image */
-               bool success               =
-                  command_event_disk_control_append_image(path);
-
-#if defined(HAVE_MENU)
-               /* Appending a disk image may or may not affect
-                * the disk tray eject status. If status has changed,
-                * must refresh the disk options menu */
-               if (initial_disk_ejected != disk_control_get_eject_state(
-                     &sys_info->disk_control))
-                  menu_st->flags                 |=  MENU_ST_FLAG_ENTRIES_NEED_REFRESH
-                                                  |  MENU_ST_FLAG_PREVENT_POPULATE;
-#endif
-               return success;
-            }
+               return command_event_disk_control_append_image(path);
             else
             {
                const char *_msg = msg_hash_to_str(MSG_CORE_DOES_NOT_SUPPORT_DISK_OPTIONS);
@@ -5952,6 +5968,30 @@ void main_exit(void *args)
 #endif
 }
 
+#if defined(WEBOS)
+/* make a directory recursively */
+static int mkdir_p(const char *path, mode_t mode)
+{
+    char tmp[PATH_MAX_LENGTH];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = 0;
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            mkdir(tmp, mode);
+            *p = '/';
+        }
+    }
+    return mkdir(tmp, mode);
+}
+#endif
+
 /**
  * main_entry:
  *
@@ -5989,6 +6029,27 @@ int rarch_main(int argc, char *argv[], void *data)
 #endif
 
 #if defined(WEBOS)
+   /* compatibility with webOS 1 and 2 */
+   const char *home = getenv("HOME");
+   const char *appId = getenv("APPID");
+   char new_path[PATH_MAX_LENGTH];
+
+   if (home)
+   {
+      if (!appId || !*appId || strcmp(appId, "com.palm.devmode.openssh") == 0)
+         appId = WEBOS_APP_ID;
+
+      snprintf(new_path, sizeof(new_path), "/%s/.config", home);
+      if (access(new_path, F_OK) != 0 && mkdir(new_path, 0775) != 0)
+      {
+         snprintf(new_path, sizeof(new_path), "/media/developer/temp/webosbrew/%s", appId);
+         if (mkdir_p(new_path, 0775) != 0 && errno != EEXIST)
+            RARCH_WARN("[webOS]: Unable to write to '%s': %s\n", new_path, strerror(errno));
+         else
+            setenv("HOME", new_path, 1);
+      }
+   }
+
    /* compatibility with webOS 3 - 5 */
    if (getenv("EGL_PLATFORM") == NULL)
       setenv("EGL_PLATFORM", "wayland", 0);
@@ -6064,6 +6125,10 @@ int rarch_main(int argc, char *argv[], void *data)
    }
 
    settings = config_get_ptr();
+
+#ifdef HAVE_SMBCLIENT
+   retroarch_smb_init();
+#endif
 
    ui_companion_driver_init_first(
 #ifdef HAVE_QT
@@ -6301,13 +6366,58 @@ static void retroarch_print_features(void)
    frontend_driver_attach_console();
 
    _len  = strlcpy(buf, "Features:\n", sizeof(buf));
+#ifdef HAVE_DYLIB
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_DYLIB,           "Dylib",           "External filter and plugin support");
+#endif
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_DYNAMIC,         "Dynamic",         "Dynamic run-time loading of libretro library");
 #ifdef HAVE_LIBRETRODB
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_LIBRETRODB,      "LibretroDB",      "LibretroDB support");
+#endif
+#ifdef HAVE_THREADS
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_THREAD,          "Threads",         "Threading support");
+#endif
+#ifdef HAVE_OVERLAY
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_OVERLAY,         "Overlay",         "Overlay support");
 #endif
 #ifdef HAVE_COMMAND
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_COMMAND,         "Command",         "Command interface support");
 #endif
+#ifdef HAVE_NETWORK_CMD
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_NETWORK_COMMAND, "Network Command", "Network Command interface support");
+#endif
+#ifdef HAVE_NETWORKGAMEPAD
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_NETWORK_GAMEPAD, "Network Gamepad", "Network Controller support");
+#endif
+#ifdef HAVE_NETWORKING
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_NETPLAY,         "Netplay",         "Peer-to-peer netplay");
+#endif
+#ifdef HAVE_SSL
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SSL,             "SSL",             "SSL Support");
+#endif
+#ifdef HAVE_CG
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_CG,              "Cg",              "Fragment/vertex shader driver");
+#endif
+#ifdef HAVE_GLSL
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_GLSL,            "GLSL",            "Fragment/vertex shader driver");
+#endif
+#ifdef HAVE_HLSL
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_HLSL,            "HLSL",            "Fragment/vertex shader driver");
+#endif
+#ifdef HAVE_SLANG
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SLANG,           "Slang",           "Fragment/vertex shader driver");
+#endif
+#ifdef HAVE_RPNG
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RPNG,            "RPNG",            "PNG (RPNG) image loading/encoding");
+#endif
+#ifdef HAVE_RJPEG
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RJPEG,           "RJPEG",           "JPEG (RJPEG) image loading");
+#endif
+#ifdef HAVE_RBMP
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RBMP,            "RBMP",            "BMP (RBMP) image loading/encoding");
+#endif
+#ifdef HAVE_RTGA
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RTGA,            "RTGA",            "TGA (RTGA) image loading/encoding");
+#endif
 #ifdef HAVE_SDL
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_SDL,             "SDL1",            "SDL1 input/audio/video drivers");
 #endif
@@ -6318,33 +6428,30 @@ static void retroarch_print_features(void)
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_X11,             "X11",             "X11 input/video drivers");
 #endif
 #ifdef HAVE_UDEV
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_UDEV,            "UDEV",            "UDEV/EVDEV input driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_UDEV,            "udev",            "udev/evdev input driver");
 #endif
 #ifdef HAVE_WAYLAND
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_WAYLAND,         "Wayland",         "Wayland input/video drivers");
 #endif
-#ifdef HAVE_THREADS
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_THREAD,          "Threads",         "Threading support");
-#endif
 #ifdef HAVE_GDI
 #if defined(_WIN32) && !defined(_XBOX) && !defined(__WINRT__)
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_GDI,            "GDI",               "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_GDI,             "GDI",             "Video driver");
 #endif
 #endif
 #ifdef HAVE_D3D8
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D8,            "Direct3D 8",       "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D8,            "Direct3D 8",      "Video driver");
 #endif
 #ifdef HAVE_D3D9
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D9,            "Direct3D 9",       "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D9,            "Direct3D 9",      "Video driver");
 #endif
 #ifdef HAVE_D3D10
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D10,           "Direct3D 10",      "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D10,           "Direct3D 10",     "Video driver");
 #endif
 #ifdef HAVE_D3D11
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D11,           "Direct3D 11",      "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D11,           "Direct3D 11",     "Video driver");
 #endif
 #ifdef HAVE_D3D12
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D12,           "Direct3D 12",      "Video driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_D3D12,           "Direct3D 12",     "Video driver");
 #endif
 #ifdef HAVE_VULKAN
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_VULKAN,          "Vulkan",          "Video driver");
@@ -6370,32 +6477,38 @@ static void retroarch_print_features(void)
 #ifdef HAVE_VG
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_VG,              "OpenVG",          "Video context driver");
 #endif
+#ifdef HAVE_ALSA
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_ALSA,            "ALSA",            "Audio driver");
+#endif
 #ifdef HAVE_COREAUDIO
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_COREAUDIO,       "CoreAudio",       "Audio driver");
 #endif
 #ifdef HAVE_COREAUDIO3
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_COREAUDIO3,      "CoreAudioV3",     "Audio driver");
 #endif
-#ifdef HAVE_ALSA
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_ALSA,            "ALSA",            "Audio driver");
+#ifdef HAVE_JACK
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_JACK,            "JACK",            "Audio driver");
 #endif
-#ifdef HAVE_PIPEWIRE
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_PIPEWIRE,        "PipeWire",        "Audio driver");
+#ifdef HAVE_AL
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_AL,              "OpenAL",          "Audio driver");
+#endif
+#ifdef HAVE_SL
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SL,              "OpenSL",          "Audio driver");
 #endif
 #ifdef HAVE_OSS
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_OSS,             "OSS",             "Audio driver");
 #endif
-#ifdef HAVE_JACK
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_JACK,            "Jack",            "Audio driver");
+#ifdef HAVE_PIPEWIRE
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_PIPEWIRE,        "PipeWire",        "Audio driver");
 #endif
-#ifdef HAVE_RSOUND
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RSOUND,          "RSound",          "Audio driver");
+#ifdef HAVE_PULSE
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_PULSE,           "PulseAudio",      "Audio driver");
 #endif
 #ifdef HAVE_ROAR
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_ROAR,            "RoarAudio",       "Audio driver");
 #endif
-#ifdef HAVE_PULSE
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_PULSE,           "PulseAudio",      "Audio driver");
+#ifdef HAVE_RSOUND
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RSOUND,          "RSound",          "Audio driver");
 #endif
 #ifdef HAVE_DSOUND
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_DSOUND,          "DirectSound",     "Audio driver");
@@ -6406,60 +6519,38 @@ static void retroarch_print_features(void)
 #ifdef HAVE_XAUDIO
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_XAUDIO,          "XAudio2",         "Audio driver");
 #endif
-#ifdef HAVE_AL
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_AL,              "OpenAL",          "Audio driver");
-#endif
-#ifdef HAVE_SL
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SL,              "OpenSL",          "Audio driver");
-#endif
 #ifdef HAVE_7ZIP
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_7ZIP,            "7zip",            "7zip extraction support");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_7ZIP,            "7zip",            "7zip support");
 #endif
 #ifdef HAVE_ZLIB
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_ZLIB,            "zlib",            "zip extraction support");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_ZLIB,            "zlib",            "zlib support");
 #endif
-#ifdef HAVE_DYLIB
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_DYLIB,           "External",        "External filter and plugin support");
+#ifdef HAVE_ZSTD
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_ZSTD,            "zstd",            "Zstandard support");
 #endif
-#ifdef HAVE_CG
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_CG,              "Cg",              "Fragment/vertex shader driver");
+#ifdef HAVE_FFMPEG
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_FFMPEG,          "FFmpeg",          "On-the-fly recording of gameplay with libavcodec");
 #endif
-#ifdef HAVE_GLSL
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_GLSL,            "GLSL",            "Fragment/vertex shader driver");
-#endif
-#ifdef HAVE_HLSL
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_HLSL,            "HLSL",            "Fragment/vertex shader driver");
-#endif
-#ifdef HAVE_SLANG
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SLANG,           "glslang",         "Fragment/vertex shader driver");
+#ifdef HAVE_MPV
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_MPV,             "mpv",             "Cross-platform media player");
 #endif
 #ifdef HAVE_SDL_IMAGE
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_SDL_IMAGE,       "SDL_image",       "SDL_image image loading");
 #endif
-#ifdef HAVE_RPNG
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RPNG,            "rpng",            "PNG image loading/encoding");
-#endif
-#ifdef HAVE_RJPEG
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_RJPEG,           "rjpeg",           "JPEG image loading");
-#endif
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_DYNAMIC,         "Dynamic",         "Dynamic run-time loading of libretro library");
-#ifdef HAVE_FFMPEG
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_FFMPEG,          "FFmpeg",          "On-the-fly recording of gameplay with libavcodec");
+#ifdef HAVE_CORETEXT
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_CORETEXT,        "CoreText",        "TTF font rendering driver");
 #endif
 #ifdef HAVE_FREETYPE
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_FREETYPE,        "FreeType",        "TTF font rendering driver");
 #endif
-#ifdef HAVE_CORETEXT
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_CORETEXT,        "CoreText",        "TTF font rendering driver");
+#ifdef HAVE_STB_FONT
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_STBFONT,         "STB TrueType",    "TTF font rendering driver");
 #endif
-#ifdef HAVE_NETWORKING
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_NETPLAY,         "Netplay",         "Peer-to-peer netplay");
-#endif
-#ifdef HAVE_SSL
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_SSL,              "SSL",            "SSL Support");
+#ifdef HAVE_V4L2
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_V4L2,            "Video4Linux2",    "Camera driver");
 #endif
 #ifdef HAVE_LIBUSB
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_LIBUSB,          "Libusb",          "Libusb support");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_LIBUSB,          "libusb",          "libusb support");
 #endif
 #ifdef HAVE_COCOA
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_COCOA,           "Cocoa",           "Cocoa UI companion support (for OSX and/or iOS)");
@@ -6468,10 +6559,7 @@ static void retroarch_print_features(void)
    _len += _PSUPP_BUF(buf, _len, SUPPORTS_QT,              "Qt",              "Qt UI companion support");
 #endif
 #ifdef HAVE_QT6
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_QT6,             "Qt6",              "Qt 6.x support");
-#endif
-#ifdef HAVE_V4L2
-   _len += _PSUPP_BUF(buf, _len, SUPPORTS_V4L2,            "Video4Linux2",    "Camera driver");
+   _len += _PSUPP_BUF(buf, _len, SUPPORTS_QT6,             "Qt6",             "Qt 6.x support");
 #endif
 
    fputs(buf, stdout);
@@ -8746,6 +8834,10 @@ bool retroarch_main_quit(void)
 
 #if defined(WEBOS) && defined(HAVE_WAYLAND)
    shutdown_webos_contexts();
+#endif
+
+#ifdef HAVE_SMBCLIENT
+   smb_shutdown();
 #endif
 
    return true;

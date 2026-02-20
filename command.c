@@ -2120,7 +2120,7 @@ void command_event_save_current_config(enum override_type type)
 
             /* command_event_save_config() does its own logging */
             if (msg_cat == MESSAGE_QUEUE_CATEGORY_ERROR)
-               RARCH_ERR("[Overrides] %s\n", msg);
+               RARCH_ERR("[Override] %s\n", msg);
 
             runloop_msg_queue_push(msg, _len, 1, 180, true, NULL,
                   MESSAGE_QUEUE_ICON_DEFAULT, msg_cat);
@@ -2159,14 +2159,14 @@ void command_event_save_current_config(enum override_type type)
             switch (msg_cat)
             {
                case MESSAGE_QUEUE_CATEGORY_ERROR:
-                  RARCH_ERR("[Overrides] %s\n", msg);
+                  RARCH_ERR("[Override] %s\n", msg);
                   break;
                case MESSAGE_QUEUE_CATEGORY_WARNING:
-                  RARCH_WARN("[Overrides] %s\n", msg);
+                  RARCH_WARN("[Override] %s\n", msg);
                   break;
                case MESSAGE_QUEUE_CATEGORY_SUCCESS:
                default:
-                  RARCH_LOG("[Overrides] %s\n", msg);
+                  RARCH_LOG("[Override] %s\n", msg);
                   break;
             }
 
@@ -2214,9 +2214,9 @@ void command_event_remove_current_config(enum override_type type)
             }
 
             if (msg_cat == MESSAGE_QUEUE_CATEGORY_ERROR)
-               RARCH_ERR("[Overrides] %s\n", msg);
+               RARCH_ERR("[Override] %s\n", msg);
             else
-               RARCH_LOG("[Overrides] %s\n", msg);
+               RARCH_LOG("[Override] %s\n", msg);
 
             runloop_msg_queue_push(msg, _len, 1, 180, true, NULL,
                   MESSAGE_QUEUE_ICON_DEFAULT, msg_cat);
@@ -2368,17 +2368,6 @@ bool command_event_disk_control_append_image(
    if (runloop_st->flags & RUNLOOP_FLAG_USE_SRAM)
       autosave_deinit();
 #endif
-
-   /* TODO/FIXME: Need to figure out what to do with subsystems case. */
-   if (path_is_empty(RARCH_PATH_SUBSYSTEM))
-   {
-      /* Update paths for our new image.
-       * If we actually use append_image, we assume that we
-       * started out in a single disk case, and that this way
-       * of doing it makes the most sense. */
-      path_set(RARCH_PATH_NAMES, path);
-      runloop_path_fill_names();
-   }
 
    command_event(CMD_EVENT_AUTOSAVE_INIT, NULL);
 
