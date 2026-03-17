@@ -3769,6 +3769,9 @@ static void *vulkan_init(const video_info_t *video,
    vk_t *vk                           = (vk_t*)calloc(1, sizeof(*vk));
    if (!vk)
       return NULL;
+   /* TEST: Force Vulkan init failure to verify GL fallback */
+   RARCH_ERR("[Vulkan] TEST: Forcing init failure for fallback test.\n");
+   goto error;
    ctx_driver                         = vulkan_get_context(vk, settings);
    if (!ctx_driver)
    {
