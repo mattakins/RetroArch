@@ -1904,7 +1904,7 @@ static void menu_input_get_mouse_hw_state(
        menu->driver_ctx &&
        menu->driver_ctx->set_texture);
    bool state_inited               = current_input &&
-      current_input->input_state;
+      current_input->input_state && input_st->current_data;
 #ifdef HAVE_OVERLAY
    /* Menu pointer controls are ignored when overlays are enabled. */
    if (overlay_active)
@@ -2134,6 +2134,8 @@ static void menu_input_get_touchscreen_hw_state(
    static int16_t last_y                        = 0;
    static bool last_select_pressed              = false;
    static bool last_cancel_pressed              = false;
+   bool state_inited                            = current_input &&
+      current_input->input_state && input_st->current_data;
 
    /* Easiest to set inactive by default, and toggle
     * when input is detected */
@@ -2153,7 +2155,7 @@ static void menu_input_get_touchscreen_hw_state(
 #endif
 
    /* If touchscreen is disabled, ignore all input */
-   if (!pointer_enabled)
+   if (!pointer_enabled || !state_inited)
    {
       hw_state->x       = 0;
       hw_state->y       = 0;
