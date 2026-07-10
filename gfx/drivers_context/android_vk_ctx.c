@@ -36,9 +36,11 @@
 typedef struct
 {
    gfx_ctx_vulkan_data_t vk;
+   ANativeWindow *window;
    unsigned width;
    unsigned height;
    int swap_interval;
+   bool surface_lost;
 } android_ctx_data_vk_t;
 
 /* FORWARD DECLARATION */
@@ -168,8 +170,34 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
       RARCH_ERR("[Vulkan] Failed to create surface.\n");
       return false;
    }
+   and->window       = android_app->window;
+   and->surface_lost = false;
    RARCH_LOG("[Vulkan] Native window size: %ux%u.\n",
          and->width, and->height);
+   return true;
+}
+
+static bool android_gfx_ctx_vk_create_surface(void *data)
+{
+   android_ctx_data_vk_t *and      = (android_ctx_data_vk_t*)data;
+   struct android_app *android_app = (struct android_app*)g_android;
+
+   /* APP_CMD_INIT_WINDOW can remain pending after startup even though the
+    * Vulkan surface was created from that same native window. */
+   return and && android_app && !and->surface_lost
+      && and->window == android_app->window
+      && and->vk.vk_surface != VK_NULL_HANDLE;
+}
+
+static bool android_gfx_ctx_vk_destroy_surface(void *data)
+{
+   android_ctx_data_vk_t *and = (android_ctx_data_vk_t*)data;
+
+   if (!and)
+      return false;
+
+   /* A replacement native window requires a full Vulkan context reinit. */
+   and->surface_lost = true;
    return true;
 }
 
@@ -281,6 +309,6 @@ const gfx_ctx_driver_t gfx_ctx_vk_android = {
    android_gfx_ctx_vk_bind_hw_render,
    android_gfx_ctx_vk_get_context_data,
    NULL,                                     /* make_current */
-   NULL,                                     /* create_surface */
-   NULL                                      /* destroy_surface */
+   android_gfx_ctx_vk_create_surface,
+   android_gfx_ctx_vk_destroy_surface
 };
