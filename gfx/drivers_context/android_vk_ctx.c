@@ -36,7 +36,6 @@
 typedef struct
 {
    gfx_ctx_vulkan_data_t vk;
-   ANativeWindow *window;
    unsigned width;
    unsigned height;
    int swap_interval;
@@ -170,7 +169,6 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
       RARCH_ERR("[Vulkan] Failed to create surface.\n");
       return false;
    }
-   and->window       = android_app->window;
    and->surface_lost = false;
    RARCH_LOG("[Vulkan] Native window size: %ux%u.\n",
          and->width, and->height);
@@ -179,14 +177,19 @@ static bool android_gfx_ctx_vk_set_video_mode(void *data,
 
 static bool android_gfx_ctx_vk_create_surface(void *data)
 {
-   android_ctx_data_vk_t *and      = (android_ctx_data_vk_t*)data;
-   struct android_app *android_app = (struct android_app*)g_android;
+   android_ctx_data_vk_t *and = (android_ctx_data_vk_t*)data;
 
    /* APP_CMD_INIT_WINDOW can remain pending after startup even though the
-    * Vulkan surface was created from that same native window. */
-   return and && android_app && !and->surface_lost
-      && and->window == android_app->window
-      && and->vk.vk_surface != VK_NULL_HANDLE;
+    * Vulkan surface is already active. APP_CMD_TERM_WINDOW marks a real
+    * surface loss and keeps the full context-reinit path intact. */
+   if (and && !and->surface_lost
+         && and->vk.vk_surface != VK_NULL_HANDLE)
+   {
+      RARCH_LOG("[Vulkan] Ignoring duplicate Android window initialization.\n");
+      return true;
+   }
+
+   return false;
 }
 
 static bool android_gfx_ctx_vk_destroy_surface(void *data)
