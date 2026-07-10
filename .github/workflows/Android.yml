@@ -36,3 +36,4 @@ jobs:
         path: |
           pkg/android/phoenix/build/outputs/apk/normal/debug/phoenix-normal-debug.apk
           pkg/android/phoenix/build/outputs/apk/aarch64/debug/phoenix-aarch64-debug.apk
+          pkg/android/phoenix/build/intermediates/ndkBuild/**/obj/local/arm64-v8a/libretroarch-activity.so
