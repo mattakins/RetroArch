@@ -5216,6 +5216,9 @@ static void *vulkan_init(const video_info_t *video,
 #endif
 
    vulkan_init_readback(vk, settings->bools.video_gpu_record);
+
+   /* Driver resources now match the context's current swapchain. */
+   vk->context->flags &= ~VK_CTX_FLAG_INVALID_SWAPCHAIN;
    return vk;
 
 error:
