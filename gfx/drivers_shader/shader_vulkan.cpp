@@ -506,6 +506,15 @@ class Framebuffer
       VkImageView get_view() const { return view; }
       VkFramebuffer get_framebuffer() const { return framebuffer; }
       VkRenderPass get_render_pass() const { return render_pass; }
+      bool is_valid() const
+      {
+         return image != VK_NULL_HANDLE
+             && view != VK_NULL_HANDLE
+             && fb_view != VK_NULL_HANDLE
+             && framebuffer != VK_NULL_HANDLE
+             && render_pass != VK_NULL_HANDLE
+             && memory.memory != VK_NULL_HANDLE;
+      }
 
       unsigned get_levels() const { return levels; }
 
@@ -1456,11 +1465,11 @@ void vulkan_filter_chain::update_history(DeferredDisposer &disposer,
 
    /* Advance ring index backwards: the oldest slot becomes the newest.
     * This replaces the O(N) move_backward with O(1) index arithmetic. */
-   history_ring_index = (history_ring_index == 0)
+   unsigned next_history_ring_index = (history_ring_index == 0)
       ? hist_size - 1
       : history_ring_index - 1;
 
-   auto &target = original_history[history_ring_index];
+   auto &target = original_history[next_history_ring_index];
 
    bool copy_history = true;
 
@@ -1472,8 +1481,11 @@ void vulkan_filter_chain::update_history(DeferredDisposer &disposer,
             { input_texture.width, input_texture.height }, input_texture.format);
 
    if (copy_history)
+   {
+      history_ring_index = next_history_ring_index;
       vulkan_framebuffer_copy(target->get_image(), target->get_size(),
             cmd, input_texture.image, src_layout);
+   }
    else
       RARCH_ERR("[Vulkan] Failed to resize shader history framebuffer.\n");
 
@@ -1581,8 +1593,13 @@ bool vulkan_filter_chain::init_history()
    common.original_history.resize(required_images);
 
    for (i = 0; i < required_images; i++)
-      original_history.emplace_back(new Framebuffer(device, memory_properties,
-               max_input_size, original_format, 1));
+   {
+      std::unique_ptr<Framebuffer> framebuffer(new Framebuffer(
+               device, memory_properties, max_input_size, original_format, 1));
+      if (!framebuffer->is_valid())
+         return false;
+      original_history.emplace_back(std::move(framebuffer));
+   }
 
 #ifdef VULKAN_DEBUG
    RARCH_LOG("[Vulkan] Using history of %u frames.\n", unsigned(required_images));
@@ -2936,7 +2953,7 @@ bool Pass::init_feedback()
          new Framebuffer(device, memory_properties,
             current_framebuffer_size,
             pass_info.rt_format, pass_info.max_levels));
-   return true;
+   return fb_feedback->is_valid();
 }
 
 bool Pass::build()
@@ -2949,10 +2966,14 @@ bool Pass::build()
    fb_feedback.reset();
 
    if (!final_pass)
+   {
       framebuffer = std::unique_ptr<Framebuffer>(
             new Framebuffer(device, memory_properties,
                current_framebuffer_size,
                pass_info.rt_format, pass_info.max_levels));
+      if (!framebuffer->is_valid())
+         return false;
+   }
 
    for (i = 0; i < parameters.size(); i++)
    {
@@ -3584,6 +3605,16 @@ bool Framebuffer::init()
    info.pQueueFamilyIndices = NULL;
    info.initialLayout       = VK_IMAGE_LAYOUT_UNDEFINED;
    new_levels               = info.mipLevels;
+
+   if (!info.extent.width || !info.extent.height || !new_levels
+         || format == VK_FORMAT_UNDEFINED)
+   {
+      RARCH_ERR("[Vulkan] Refusing invalid framebuffer image "
+            "(%ux%u, format %u, levels %u).\n",
+            info.extent.width, info.extent.height,
+            (unsigned)format, new_levels);
+      return false;
+   }
 
    if (vkCreateImage(device, &info, nullptr, &new_image) != VK_SUCCESS)
       goto error;
