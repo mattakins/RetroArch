@@ -105,6 +105,7 @@ static void android_gfx_ctx_vk_check_window(void *data, bool *quit,
    unsigned new_width                   = 0;
    unsigned new_height                  = 0;
    android_ctx_data_vk_t *and           = (android_ctx_data_vk_t*)data;
+   bool rotation_changed                 = android_app->needs_swapchain_recreate != 0;
 
    *quit                                = false;
 
@@ -116,9 +117,22 @@ static void android_gfx_ctx_vk_check_window(void *data, bool *quit,
 
    /* Swapchains are recreated in set_resize as a
     * central place, so use that to trigger swapchain reinit. */
-   *resize    = (and->vk.flags & VK_DATA_FLAG_NEED_NEW_SWAPCHAIN) ? true : false;
+   *resize    = rotation_changed ||
+      (and->vk.flags & VK_DATA_FLAG_NEED_NEW_SWAPCHAIN) ? true : false;
    new_width  = android_app->content_rect.width;
    new_height = android_app->content_rect.height;
+
+   if (rotation_changed && android_app->window)
+   {
+      unsigned window_width  = ANativeWindow_getWidth(android_app->window);
+      unsigned window_height = ANativeWindow_getHeight(android_app->window);
+
+      if (window_width && window_height)
+      {
+         new_width  = window_width;
+         new_height = window_height;
+      }
+   }
 
    if (new_width != *width || new_height != *height)
    {
@@ -136,9 +150,17 @@ static bool android_gfx_ctx_vk_set_resize(void *data,
 {
    android_ctx_data_vk_t        *and  = (android_ctx_data_vk_t*)data;
    struct android_app *android_app    = (struct android_app*)g_android;
+   bool rotation_changed               = android_app->needs_swapchain_recreate != 0;
 
-   and->width                         = android_app->content_rect.width;
-   and->height                        = android_app->content_rect.height;
+   and->width                         = width;
+   and->height                        = height;
+
+   /* A rotation can arrive before onContentRectChanged. Force
+    * vulkan_create_swapchain() past its same-size early return so the
+    * old dequeued image is released before Android's BLAST queue rotates. */
+   if (rotation_changed)
+      and->vk.context.flags           |= VK_CTX_FLAG_INVALID_SWAPCHAIN;
+
    RARCH_LOG("[Vulkan] Native window size: %ux%u.\n", and->width, and->height);
    if (!vulkan_create_swapchain(&and->vk, and->width, and->height, and->swap_interval))
    {
@@ -148,6 +170,8 @@ static bool android_gfx_ctx_vk_set_resize(void *data,
 
    if (and->vk.flags & VK_DATA_FLAG_CREATED_NEW_SWAPCHAIN)
       vulkan_acquire_next_image(&and->vk);
+   if (rotation_changed)
+      android_app->needs_swapchain_recreate = 0;
    and->vk.context.flags             |=  VK_CTX_FLAG_INVALID_SWAPCHAIN;
    and->vk.flags                     &= ~VK_DATA_FLAG_NEED_NEW_SWAPCHAIN;
 
@@ -204,6 +228,7 @@ static bool android_gfx_ctx_vk_create_surface(void *data)
    }
 
    and->surface_lost = false;
+   android_app->needs_swapchain_recreate = 0;
    RARCH_LOG("[Vulkan] Recreated Android surface: %ux%u.\n",
          and->width, and->height);
    return true;

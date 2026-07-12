@@ -2291,6 +2291,8 @@ static void frontend_unix_init(void *data)
    android_app->config             = AConfiguration_new();
    AConfiguration_fromAssetManager(android_app->config,
          android_app->activity->assetManager);
+   android_app->config_orientation = AConfiguration_getOrientation(
+         android_app->config);
 
    looper = (ALooper*)ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
    ALooper_addFd(looper, android_app->msgread, LOOPER_ID_MAIN,

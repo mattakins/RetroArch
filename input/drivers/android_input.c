@@ -458,9 +458,19 @@ static void android_input_poll_main_cmd(void)
       }
 
       case APP_CMD_CONFIG_CHANGED:
+      {
+         int orientation;
+
          AConfiguration_fromAssetManager(android_app->config,
                android_app->activity->assetManager);
+         orientation = AConfiguration_getOrientation(android_app->config);
+         if (orientation != android_app->config_orientation)
+         {
+            android_app->config_orientation        = orientation;
+            android_app->needs_swapchain_recreate = 1;
+         }
          break;
+      }
       case APP_CMD_TERM_WINDOW:
          slock_lock(android_app->mutex);
 

@@ -114,6 +114,15 @@ struct android_app
 
    int reinitRequested;
 
+   /* Updated by APP_CMD_CONFIG_CHANGED to detect screen rotation. */
+   int config_orientation;
+
+   /* Set on screen rotation so the
+    * video driver knows to proactively recreate its swapchain before
+    * Android's BLASTBufferQueue can wedge on a stale dequeued buffer.
+    * The driver clears this once it has rebuilt its swapchain. */
+   int needs_swapchain_recreate;
+
    /* This is non-zero when the application's NativeActivity is being
     * destroyed and waiting for the app thread to complete. */
    int destroyRequested;
