@@ -365,7 +365,29 @@ bool android_input_can_be_keyboard(void *data, int port)
     return android_input_can_be_keyboard_jni(device->id);
 }
 
-static void android_input_poll_main_cmd(void)
+static void android_input_reset_transient_state(android_input_t *android)
+{
+   struct android_app *android_app = (struct android_app*)g_android;
+
+   memset(android_key_state, 0, sizeof(android_key_state));
+   memset(android_app->analog_state, 0, sizeof(android_app->analog_state));
+   memset(android_app->hat_state, 0, sizeof(android_app->hat_state));
+
+   if (!android)
+      return;
+
+   android->quick_tap_time = 0;
+   android->pointer_count  = 0;
+   android->mouse_x_delta  = 0;
+   android->mouse_y_delta  = 0;
+   android->mouse_l        = 0;
+   android->mouse_r        = 0;
+   android->mouse_m        = 0;
+   android->mouse_wu       = 0;
+   android->mouse_wd       = 0;
+}
+
+static void android_input_poll_main_cmd(android_input_t *android)
 {
    int8_t cmd;
    struct android_app *android_app = (struct android_app*)g_android;
@@ -601,6 +623,7 @@ static void android_input_poll_main_cmd(void)
             runloop_st->flags |=  (RUNLOOP_FLAG_PAUSED
                                  | RUNLOOP_FLAG_IDLE);
             video_driver_set_stub_frame();
+            android_input_reset_transient_state(android);
 
             /* Avoid draining battery while app is not being used. */
             if (disable_accelerometer)
@@ -1958,7 +1981,7 @@ static void android_input_poll(void *data)
             android_input_poll_user(android);
             break;
          case LOOPER_ID_MAIN:
-            android_input_poll_main_cmd();
+            android_input_poll_main_cmd(android);
             break;
       }
 
@@ -1981,7 +2004,7 @@ bool android_run_events(void *data)
    struct android_app *android_app = (struct android_app*)g_android;
 
    if (ALooper_pollOnce(-1, NULL, NULL, NULL) == LOOPER_ID_MAIN)
-      android_input_poll_main_cmd();
+      android_input_poll_main_cmd((android_input_t*)data);
 
    /* Check if we are exiting. */
    if (android_app->destroyRequested != 0)
