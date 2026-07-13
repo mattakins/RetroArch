@@ -5216,6 +5216,9 @@ static void *vulkan_init(const video_info_t *video,
 #endif
 
    vulkan_init_readback(vk, settings->bools.video_gpu_record);
+
+   /* Driver resources now match the context's current swapchain. */
+   vk->context->flags &= ~VK_CTX_FLAG_INVALID_SWAPCHAIN;
    return vk;
 
 error:
@@ -6326,6 +6329,80 @@ static void vulkan_run_hdr_pipeline(VkPipeline pipeline, VkRenderPass render_pas
    vk->hdr.ubo_values.paper_white_nits    = prev_paper_white_nits;
 }
 
+/* An invalidated driver swapchain can still have an image acquired by the
+ * context. Before returning early, submit an empty operation that waits for
+ * acquisition and signals the present semaphore. This releases the image
+ * through the normal context swap path instead of accumulating outstanding
+ * ANativeWindow buffers. */
+static bool vulkan_release_acquired_swapchain_image(vk_t *vk,
+      unsigned frame_index, unsigned swapchain_index)
+{
+   VkSubmitInfo submit_info;
+   VkSemaphore wait_semaphore = VK_NULL_HANDLE;
+   VkSemaphore signal_semaphore;
+   VkFence fence;
+   VkResult res;
+   static const VkPipelineStageFlags wait_stage =
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+   if (     !(vk->context->flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN)
+         || !vk->ctx_driver || !vk->ctx_driver->swap_buffers
+         || frame_index >= VULKAN_MAX_SWAPCHAIN_IMAGES
+         || swapchain_index >= VULKAN_MAX_SWAPCHAIN_IMAGES)
+      return false;
+
+   signal_semaphore = vk->context->swapchain_semaphores[swapchain_index];
+   if (signal_semaphore == VK_NULL_HANDLE)
+      return false;
+
+   submit_info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   submit_info.pNext                = NULL;
+   submit_info.waitSemaphoreCount   = 0;
+   submit_info.pWaitSemaphores      = NULL;
+   submit_info.pWaitDstStageMask    = NULL;
+   submit_info.commandBufferCount   = 0;
+   submit_info.pCommandBuffers      = NULL;
+   submit_info.signalSemaphoreCount = 1;
+   submit_info.pSignalSemaphores    = &signal_semaphore;
+
+   if (vk->context->swapchain_acquire_semaphore != VK_NULL_HANDLE)
+   {
+      wait_semaphore = vk->context->swapchain_acquire_semaphore;
+      vk->context->swapchain_wait_semaphores[frame_index] = wait_semaphore;
+      vk->context->swapchain_acquire_semaphore            = VK_NULL_HANDLE;
+      submit_info.waitSemaphoreCount                      = 1;
+      submit_info.pWaitSemaphores                         = &wait_semaphore;
+      submit_info.pWaitDstStageMask                       = &wait_stage;
+   }
+
+   fence = vk->context->swapchain_fences[frame_index];
+
+#ifdef HAVE_THREADS
+   slock_lock(vk->context->queue_lock);
+#endif
+   res = vkQueueSubmit(vk->context->queue, 1, &submit_info, fence);
+#ifdef HAVE_THREADS
+   slock_unlock(vk->context->queue_lock);
+#endif
+
+   if (res != VK_SUCCESS)
+   {
+      RARCH_ERR("[Vulkan] Failed to release acquired swapchain image (err = %d).\n",
+            (int)res);
+      if (wait_semaphore != VK_NULL_HANDLE)
+      {
+         vk->context->swapchain_acquire_semaphore = wait_semaphore;
+         vk->context->swapchain_wait_semaphores[frame_index] = VK_NULL_HANDLE;
+      }
+      return false;
+   }
+
+   vk->context->swapchain_fences_signalled[frame_index] =
+      fence != VK_NULL_HANDLE;
+   vk->ctx_driver->swap_buffers(vk->ctx_data);
+   return true;
+}
+
 static bool vulkan_frame(void *data, const void *frame,
       unsigned frame_width, unsigned frame_height,
       uint64_t frame_count,
@@ -6360,11 +6437,29 @@ static bool vulkan_frame(void *data, const void *frame,
 #ifdef HAVE_GFX_WIDGETS
    bool widgets_active                           = video_info->widgets_active;
 #endif
-   unsigned frame_index                          =
-      vk->context->current_frame_index;
-   unsigned swapchain_index                      =
-      vk->context->current_swapchain_index;
+   unsigned frame_index;
+   unsigned swapchain_index;
    bool overlay_behind_menu                      = video_info->overlay_behind_menu;
+
+   /* The context may recreate its swapchain while acquiring the next
+    * image. Rebuild driver-owned framebuffers before recording commands
+    * against images from the new swapchain. */
+   if (vk->context->flags & VK_CTX_FLAG_INVALID_SWAPCHAIN)
+      vulkan_check_swapchain(vk);
+
+   frame_index     = vk->context->current_frame_index;
+   swapchain_index = vk->context->current_swapchain_index;
+
+   if (     frame_index     >= vk->num_swapchain_images
+         || swapchain_index >= vk->num_swapchain_images)
+   {
+      RARCH_ERR("[Vulkan] Invalid swapchain indices (frame %u, image %u, count %u).\n",
+            frame_index, swapchain_index, vk->num_swapchain_images);
+      vk->context->flags |= VK_CTX_FLAG_INVALID_SWAPCHAIN;
+      vulkan_release_acquired_swapchain_image(vk,
+            frame_index, swapchain_index);
+      return true;
+   }
 
    /* Fast toggle shader filter chain logic */
    filter_chain = vk->filter_chain;
@@ -6748,8 +6843,17 @@ static bool vulkan_frame(void *data, const void *frame,
       backbuffer = &vk->offscreen_buffer;
 #endif /* VULKAN_HDR_SWAPCHAIN */
 
+   if (     (backbuffer->image != VK_NULL_HANDLE)
+         && (backbuffer->framebuffer == VK_NULL_HANDLE))
+   {
+      RARCH_ERR("[Vulkan] Swapchain image %u has no framebuffer.\n",
+            swapchain_index);
+      vk->context->flags |= VK_CTX_FLAG_INVALID_SWAPCHAIN;
+   }
+
    /* Render to backbuffer. */
    if (     (backbuffer->image != VK_NULL_HANDLE)
+         && (backbuffer->framebuffer != VK_NULL_HANDLE)
          && (vk->context->flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN))
    {
       rp_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
