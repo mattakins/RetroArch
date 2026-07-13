@@ -105,7 +105,8 @@ static void android_gfx_ctx_vk_check_window(void *data, bool *quit,
    unsigned new_width                   = 0;
    unsigned new_height                  = 0;
    android_ctx_data_vk_t *and           = (android_ctx_data_vk_t*)data;
-   bool rotation_changed                 = android_app->needs_swapchain_recreate != 0;
+   bool rotation_changed                 = retro_atomic_load_acquire_int(
+         &android_app->needs_swapchain_recreate) != 0;
 
    *quit                                = false;
 
@@ -150,7 +151,8 @@ static bool android_gfx_ctx_vk_set_resize(void *data,
 {
    android_ctx_data_vk_t        *and  = (android_ctx_data_vk_t*)data;
    struct android_app *android_app    = (struct android_app*)g_android;
-   bool rotation_changed               = android_app->needs_swapchain_recreate != 0;
+   bool rotation_changed               = retro_atomic_load_acquire_int(
+         &android_app->needs_swapchain_recreate) != 0;
 
    and->width                         = width;
    and->height                        = height;
@@ -171,7 +173,8 @@ static bool android_gfx_ctx_vk_set_resize(void *data,
    if (and->vk.flags & VK_DATA_FLAG_CREATED_NEW_SWAPCHAIN)
       vulkan_acquire_next_image(&and->vk);
    if (rotation_changed)
-      android_app->needs_swapchain_recreate = 0;
+      retro_atomic_store_release_int(
+            &android_app->needs_swapchain_recreate, 0);
    and->vk.context.flags             |=  VK_CTX_FLAG_INVALID_SWAPCHAIN;
    and->vk.flags                     &= ~VK_DATA_FLAG_NEED_NEW_SWAPCHAIN;
 
@@ -228,7 +231,8 @@ static bool android_gfx_ctx_vk_create_surface(void *data)
    }
 
    and->surface_lost = false;
-   android_app->needs_swapchain_recreate = 0;
+   retro_atomic_store_release_int(
+         &android_app->needs_swapchain_recreate, 0);
    RARCH_LOG("[Vulkan] Recreated Android surface: %ux%u.\n",
          and->width, and->height);
    return true;
@@ -278,6 +282,13 @@ static void android_gfx_ctx_vk_swap_buffers(void *data)
 
    if (!and || and->surface_lost
          || and->vk.vk_surface == VK_NULL_HANDLE)
+      return;
+
+   /* onConfigurationChanged() signals rotation from the activity thread.
+    * Do not present or acquire another image while Android is replacing the
+    * window buffers; set_resize() will release and recreate the swapchain. */
+   if (retro_atomic_load_acquire_int(
+            &((struct android_app*)g_android)->needs_swapchain_recreate))
       return;
 
    if (and->vk.context.flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN)

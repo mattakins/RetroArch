@@ -360,8 +360,31 @@ static void onStop(ANativeActivity* activity)
 
 static void onConfigurationChanged(ANativeActivity *activity)
 {
-   android_app_write_cmd((struct android_app*)
-         activity->instance, APP_CMD_CONFIG_CHANGED);
+   struct android_app *android_app = (struct android_app*)activity->instance;
+   AConfiguration *config          = AConfiguration_new();
+
+   /* This callback runs on Android's activity thread. Signal the video
+    * thread here instead of waiting for APP_CMD_CONFIG_CHANGED to be
+    * handled, otherwise it can continue acquiring frames while BLAST is
+    * replacing the window buffers. */
+   if (config)
+   {
+      int orientation;
+
+      AConfiguration_fromAssetManager(config, activity->assetManager);
+      orientation = AConfiguration_getOrientation(config);
+      if (orientation != retro_atomic_load_acquire_int(
+               &android_app->config_orientation))
+      {
+         retro_atomic_store_release_int(
+               &android_app->config_orientation, orientation);
+         retro_atomic_store_release_int(
+               &android_app->needs_swapchain_recreate, 1);
+      }
+      AConfiguration_delete(config);
+   }
+
+   android_app_write_cmd(android_app, APP_CMD_CONFIG_CHANGED);
 }
 
 static void onLowMemory(ANativeActivity* activity)
@@ -463,6 +486,8 @@ static struct android_app* android_app_create(ANativeActivity* activity,
       return NULL;
    }
    android_app->activity = activity;
+   retro_atomic_int_init(&android_app->config_orientation, 0);
+   retro_atomic_int_init(&android_app->needs_swapchain_recreate, 0);
 
    android_app->mutex    = slock_new();
    android_app->cond     = scond_new();
@@ -2291,8 +2316,8 @@ static void frontend_unix_init(void *data)
    android_app->config             = AConfiguration_new();
    AConfiguration_fromAssetManager(android_app->config,
          android_app->activity->assetManager);
-   android_app->config_orientation = AConfiguration_getOrientation(
-         android_app->config);
+   retro_atomic_store_release_int(&android_app->config_orientation,
+         AConfiguration_getOrientation(android_app->config));
 
    looper = (ALooper*)ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
    ALooper_addFd(looper, android_app->msgread, LOOPER_ID_MAIN,

@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include <boolean.h>
+#include <retro_atomic.h>
 #include <retro_miscellaneous.h>
 
 #include "../../config.def.h"
@@ -114,14 +115,15 @@ struct android_app
 
    int reinitRequested;
 
-   /* Updated by APP_CMD_CONFIG_CHANGED to detect screen rotation. */
-   int config_orientation;
+   /* Updated by the NativeActivity configuration callback to detect
+    * screen rotation before the app command is processed. */
+   retro_atomic_int_t config_orientation;
 
    /* Set on screen rotation so the
     * video driver knows to proactively recreate its swapchain before
     * Android's BLASTBufferQueue can wedge on a stale dequeued buffer.
     * The driver clears this once it has rebuilt its swapchain. */
-   int needs_swapchain_recreate;
+   retro_atomic_int_t needs_swapchain_recreate;
 
    /* This is non-zero when the application's NativeActivity is being
     * destroyed and waiting for the app thread to complete. */

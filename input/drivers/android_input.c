@@ -464,10 +464,13 @@ static void android_input_poll_main_cmd(void)
          AConfiguration_fromAssetManager(android_app->config,
                android_app->activity->assetManager);
          orientation = AConfiguration_getOrientation(android_app->config);
-         if (orientation != android_app->config_orientation)
+         if (orientation != retro_atomic_load_acquire_int(
+                  &android_app->config_orientation))
          {
-            android_app->config_orientation        = orientation;
-            android_app->needs_swapchain_recreate = 1;
+            retro_atomic_store_release_int(
+                  &android_app->config_orientation, orientation);
+            retro_atomic_store_release_int(
+                  &android_app->needs_swapchain_recreate, 1);
          }
          break;
       }
