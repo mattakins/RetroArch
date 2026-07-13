@@ -379,7 +379,7 @@ static void onConfigurationChanged(ANativeActivity *activity)
          retro_atomic_store_release_int(
                &android_app->config_orientation, orientation);
          retro_atomic_store_release_int(
-               &android_app->needs_swapchain_recreate, 1);
+               &android_app->rotation_pending, 1);
       }
       AConfiguration_delete(config);
    }
@@ -409,6 +409,19 @@ static void onNativeWindowDestroyed(ANativeActivity* activity,
       ANativeWindow* window)
 {
    android_app_set_window((struct android_app*)activity->instance, NULL);
+}
+
+static void onNativeWindowResized(ANativeActivity* activity,
+      ANativeWindow* window)
+{
+   struct android_app *android_app = (struct android_app*)activity->instance;
+
+   /* Do not recreate while the rotation animation still owns the old
+    * buffers. This callback confirms that the ANativeWindow has its new
+    * dimensions and is ready for a replacement swapchain. */
+   if (retro_atomic_load_acquire_int(&android_app->rotation_pending))
+      retro_atomic_store_release_int(
+            &android_app->needs_swapchain_recreate, 1);
 }
 
 static void onInputQueueCreated(ANativeActivity* activity, AInputQueue* queue)
@@ -488,6 +501,7 @@ static struct android_app* android_app_create(ANativeActivity* activity,
    android_app->activity = activity;
    retro_atomic_int_init(&android_app->config_orientation, 0);
    retro_atomic_int_init(&android_app->needs_swapchain_recreate, 0);
+   retro_atomic_int_init(&android_app->rotation_pending, 0);
 
    android_app->mutex    = slock_new();
    android_app->cond     = scond_new();
@@ -586,6 +600,7 @@ void ANativeActivity_onCreate(ANativeActivity* activity,
    activity->callbacks->onWindowFocusChanged    = onWindowFocusChanged;
    activity->callbacks->onNativeWindowCreated   = onNativeWindowCreated;
    activity->callbacks->onNativeWindowDestroyed = onNativeWindowDestroyed;
+   activity->callbacks->onNativeWindowResized   = onNativeWindowResized;
    activity->callbacks->onInputQueueCreated     = onInputQueueCreated;
    activity->callbacks->onInputQueueDestroyed   = onInputQueueDestroyed;
    activity->callbacks->onContentRectChanged    = onContentRectChanged;

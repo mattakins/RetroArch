@@ -125,6 +125,10 @@ struct android_app
     * The driver clears this once it has rebuilt its swapchain. */
    retro_atomic_int_t needs_swapchain_recreate;
 
+   /* Set when orientation changes. The video driver presents its current
+    * frame once, then waits for onNativeWindowResized before rebuilding. */
+   retro_atomic_int_t rotation_pending;
+
    /* This is non-zero when the application's NativeActivity is being
     * destroyed and waiting for the app thread to complete. */
    int destroyRequested;

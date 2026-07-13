@@ -46,6 +46,8 @@ typedef struct
 bool android_display_get_metrics(void *data,
 	enum display_metric_types type, float *value);
 bool android_display_has_focus(void *data);
+static bool android_gfx_ctx_vk_set_resize(void *data,
+      unsigned width, unsigned height);
 
 static void android_gfx_ctx_vk_destroy(void *data)
 {
@@ -107,19 +109,21 @@ static void android_gfx_ctx_vk_check_window(void *data, bool *quit,
    android_ctx_data_vk_t *and           = (android_ctx_data_vk_t*)data;
    bool rotation_changed                 = retro_atomic_load_acquire_int(
          &android_app->needs_swapchain_recreate) != 0;
+   bool rotation_pending                 = retro_atomic_load_acquire_int(
+         &android_app->rotation_pending) != 0;
 
    *quit                                = false;
 
    if (android_app->content_rect.changed)
    {
-      and->vk.flags                    |= VK_DATA_FLAG_NEED_NEW_SWAPCHAIN;
+      if (!rotation_pending)
+         and->vk.flags                 |= VK_DATA_FLAG_NEED_NEW_SWAPCHAIN;
       android_app->content_rect.changed = false;
    }
 
    /* Swapchains are recreated in set_resize as a
     * central place, so use that to trigger swapchain reinit. */
-   *resize    = rotation_changed ||
-      (and->vk.flags & VK_DATA_FLAG_NEED_NEW_SWAPCHAIN) ? true : false;
+   *resize    = (and->vk.flags & VK_DATA_FLAG_NEED_NEW_SWAPCHAIN) ? true : false;
    new_width  = android_app->content_rect.width;
    new_height = android_app->content_rect.height;
 
@@ -143,6 +147,19 @@ static void android_gfx_ctx_vk_check_window(void *data, bool *quit,
       *width  = new_width;
       *height = new_height;
       *resize = true;
+   }
+
+   if (rotation_changed)
+   {
+      /* The resize callback supplies the first stable ANativeWindow size
+       * after a rotation. Recreate here, before another frame can use the
+       * image returned by the final pre-rotation present. */
+      if (android_gfx_ctx_vk_set_resize(and, new_width, new_height))
+      {
+         *width  = new_width;
+         *height = new_height;
+      }
+      *resize = false;
    }
 }
 
@@ -175,6 +192,9 @@ static bool android_gfx_ctx_vk_set_resize(void *data,
    if (rotation_changed)
       retro_atomic_store_release_int(
             &android_app->needs_swapchain_recreate, 0);
+   if (rotation_changed)
+      retro_atomic_store_release_int(
+            &android_app->rotation_pending, 0);
    and->vk.context.flags             |=  VK_CTX_FLAG_INVALID_SWAPCHAIN;
    and->vk.flags                     &= ~VK_DATA_FLAG_NEED_NEW_SWAPCHAIN;
 
@@ -233,6 +253,8 @@ static bool android_gfx_ctx_vk_create_surface(void *data)
    and->surface_lost = false;
    retro_atomic_store_release_int(
          &android_app->needs_swapchain_recreate, 0);
+   retro_atomic_store_release_int(
+         &android_app->rotation_pending, 0);
    RARCH_LOG("[Vulkan] Recreated Android surface: %ux%u.\n",
          and->width, and->height);
    return true;
@@ -284,12 +306,19 @@ static void android_gfx_ctx_vk_swap_buffers(void *data)
          || and->vk.vk_surface == VK_NULL_HANDLE)
       return;
 
-   /* onConfigurationChanged() signals rotation from the activity thread.
-    * Do not present or acquire another image while Android is replacing the
-    * window buffers; set_resize() will release and recreate the swapchain. */
+   /* Return the image already acquired for this frame, but do not acquire a
+    * replacement until onNativeWindowResized confirms the new window size. */
    if (retro_atomic_load_acquire_int(
-            &((struct android_app*)g_android)->needs_swapchain_recreate))
+            &((struct android_app*)g_android)->rotation_pending))
+   {
+      if (and->vk.context.flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN)
+      {
+         and->vk.context.flags &= ~VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN;
+         if (and->vk.swapchain != VK_NULL_HANDLE)
+            vulkan_present(&and->vk, and->vk.context.current_swapchain_index);
+      }
       return;
+   }
 
    if (and->vk.context.flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN)
    {

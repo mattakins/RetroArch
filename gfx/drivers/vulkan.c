@@ -6373,6 +6373,12 @@ static bool vulkan_frame(void *data, const void *frame,
    if (vk->context->flags & VK_CTX_FLAG_INVALID_SWAPCHAIN)
       vulkan_check_swapchain(vk);
 
+   /* A platform may intentionally pause acquisition while its native window
+    * is being reconfigured. Never record or submit work to a swapchain image
+    * unless it is currently acquired. */
+   if (!(vk->context->flags & VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN))
+      return true;
+
    frame_index     = vk->context->current_frame_index;
    swapchain_index = vk->context->current_swapchain_index;
 

@@ -470,7 +470,7 @@ static void android_input_poll_main_cmd(void)
             retro_atomic_store_release_int(
                   &android_app->config_orientation, orientation);
             retro_atomic_store_release_int(
-                  &android_app->needs_swapchain_recreate, 1);
+                  &android_app->rotation_pending, 1);
          }
          break;
       }
