@@ -20,7 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* Regression test for the unclamped-swapchain-image-count fix in
+/* Regression test for swapchain image-count bounds in
  * gfx/common/vulkan_common.c::vulkan_create_swapchain.
  *
  * The function calls vkGetSwapchainImagesKHR twice -- once to
@@ -49,11 +49,13 @@
  *
  * Fix: cap desired_swapchain_images to VULKAN_MAX_SWAPCHAIN_IMAGES
  * before vkCreateSwapchainKHR, so well-behaved drivers are never
- * asked for more than we can hold; AND clamp the count between
- * the two vkGetSwapchainImagesKHR calls, to handle drivers that
- * return more images than requested.
+ * asked for more than we can hold; reject a swapchain whose actual
+ * image count exceeds that capacity; and validate every acquired
+ * image index before using it to access fixed-size arrays. Merely
+ * filling the first 16 images is unsafe because vkAcquireNextImageKHR
+ * can still return any image owned by the swapchain.
  *
- * IMPORTANT: this test keeps a verbatim copy of both clamp
+ * IMPORTANT: this test keeps a verbatim copy of the bounds
  * predicates from vulkan_common.c.  If vulkan_create_swapchain
  * amends them, the copies below must follow.  Convention used
  * by the security regression tests in samples/tasks/.
@@ -130,17 +132,27 @@ static uint32_t cap_desired_request(uint32_t desired_swapchain_images)
 }
 /* === end verbatim copy === */
 
-/* === verbatim copy of the post-fix returned-count clamp from
+/* === verbatim copy of the post-fix returned-count bound from
  *     vulkan_create_swapchain, the block between the two
  *     vkGetSwapchainImagesKHR calls.  If the production function
- *     amends this clamp, the copy must follow. === */
-static void clamp_returned_count(struct mock_vk_context *ctx)
+ *     amends this bound, the copy must follow. === */
+static bool returned_count_fits(struct mock_vk_context *ctx)
 {
+   if (ctx->num_swapchain_images == 0)
+      return false;
    if (ctx->num_swapchain_images > VULKAN_MAX_SWAPCHAIN_IMAGES)
-   {
-      /* RARCH_WARN in production. */
-      ctx->num_swapchain_images = VULKAN_MAX_SWAPCHAIN_IMAGES;
-   }
+      return false;
+   return true;
+}
+/* === end verbatim copy === */
+
+/* === verbatim copy of the acquired-index bounds predicate from
+ *     vulkan_acquire_next_image. === */
+static bool acquired_index_is_valid(struct mock_vk_context *ctx,
+      uint32_t index)
+{
+   return index < ctx->num_swapchain_images
+       && index < VULKAN_MAX_SWAPCHAIN_IMAGES;
 }
 /* === end verbatim copy === */
 
@@ -153,8 +165,8 @@ static int failures = 0;
  *
  * Pre-fix, when reported_count > VULKAN_MAX_SWAPCHAIN_IMAGES the
  * second mock call would write reported_count entries into the
- * 8-slot array -- ASan trips heap-buffer-overflow.  Post-fix,
- * the clamp ensures the second call writes at most 8.
+ * fixed-size array -- ASan trips heap-buffer-overflow. Post-fix,
+ * the sequence rejects the swapchain before the fill call.
  *
  * The function operates on `ctx` allocated by the caller; the
  * caller is malloc'd at exactly sizeof(struct mock_vk_context)
@@ -162,7 +174,7 @@ static int failures = 0;
  * (In production swapchain_images sits in a larger struct, so
  * an OOB write would corrupt sibling fields; here it would
  * corrupt heap metadata or whatever follows the malloc.) */
-static void run_postfix_sequence(struct mock_vk_context *ctx,
+static bool run_postfix_sequence(struct mock_vk_context *ctx,
       struct mock_driver *drv)
 {
    /* First call: query count.  ctx->num_swapchain_images becomes
@@ -170,19 +182,21 @@ static void run_postfix_sequence(struct mock_vk_context *ctx,
    ctx->num_swapchain_images = 0;  /* must initialise before use */
    mock_get_swapchain_images(drv, &ctx->num_swapchain_images, NULL);
 
-   /* Post-fix clamp -- closes the OOB write on the next call. */
-   clamp_returned_count(ctx);
+   /* Reject the whole swapchain rather than keeping a partial list. */
+   if (!returned_count_fits(ctx))
+   {
+      ctx->num_swapchain_images = 0;
+      return false;
+   }
 
-   /* Second call: fill.  The driver may legally write up to
-    * *count_io entries; the clamp above ensures count_io is
-    * at most VULKAN_MAX_SWAPCHAIN_IMAGES. */
+   /* Second call: fill. The accepted count is guaranteed to fit. */
    mock_get_swapchain_images(drv, &ctx->num_swapchain_images,
          ctx->swapchain_images);
+   return true;
 }
 
 /* Probe: well-behaved driver returns 3 images for a request of
- * 3.  Common path on Mesa with default settings.  No clamp
- * fires; final count is 3. */
+ * 3. Common path on Mesa with default settings. Final count is 3. */
 static void test_well_behaved_three_images(void)
 {
    struct mock_vk_context *ctx = (struct mock_vk_context *)
@@ -191,7 +205,13 @@ static void test_well_behaved_three_images(void)
 
    if (!ctx) { printf("[ERROR] calloc\n"); failures++; return; }
 
-   run_postfix_sequence(ctx, &drv);
+   if (!run_postfix_sequence(ctx, &drv))
+   {
+      printf("[ERROR] well-behaved 3-image driver was rejected\n");
+      failures++;
+      free(ctx);
+      return;
+   }
 
    if (ctx->num_swapchain_images != 3)
    {
@@ -221,7 +241,13 @@ static void test_at_capacity_boundary(void)
 
    if (!ctx) { printf("[ERROR] calloc\n"); failures++; return; }
 
-   run_postfix_sequence(ctx, &drv);
+   if (!run_postfix_sequence(ctx, &drv))
+   {
+      printf("[ERROR] at-capacity swapchain was rejected\n");
+      failures++;
+      free(ctx);
+      return;
+   }
 
    if (ctx->num_swapchain_images != VULKAN_MAX_SWAPCHAIN_IMAGES)
    {
@@ -247,7 +273,13 @@ static void test_driver_returns_nine_images(void)
 
    if (!ctx) { printf("[ERROR] calloc\n"); failures++; return; }
 
-   run_postfix_sequence(ctx, &drv);
+   if (!run_postfix_sequence(ctx, &drv))
+   {
+      printf("[ERROR] 9-image swapchain was rejected\n");
+      failures++;
+      free(ctx);
+      return;
+   }
 
    if (ctx->num_swapchain_images != 9)
    {
@@ -262,31 +294,70 @@ static void test_driver_returns_nine_images(void)
    free(ctx);
 }
 
-/* Probe: pathological driver returns 64 images.  Stress case
- * for the post-fix clamp -- pre-fix would be a 56-slot OOB write
- * (64 - 16) into adjacent heap memory. Post-fix, count becomes 16. */
+/* Probe: pathological driver returns 64 images. Keeping only 16
+ * handles would still allow acquire to return an untracked image,
+ * so the complete swapchain must be rejected. */
 static void test_driver_returns_many_images(void)
 {
    struct mock_vk_context *ctx = (struct mock_vk_context *)
       calloc(1, sizeof(*ctx));
    struct mock_driver drv = { 64, (void*)0xABCD };
+   bool accepted;
 
    if (!ctx) { printf("[ERROR] calloc\n"); failures++; return; }
 
-   run_postfix_sequence(ctx, &drv);
+   accepted = run_postfix_sequence(ctx, &drv);
 
-   if (ctx->num_swapchain_images != VULKAN_MAX_SWAPCHAIN_IMAGES)
+   if (accepted || ctx->num_swapchain_images != 0)
    {
-      printf("[ERROR] 64-image driver: count=%u, expected clamped to %u\n",
-            ctx->num_swapchain_images,
-            (unsigned)VULKAN_MAX_SWAPCHAIN_IMAGES);
+      printf("[ERROR] 64-image driver was not rejected (count=%u)\n",
+            ctx->num_swapchain_images);
       failures++;
    }
    else
-      printf("[SUCCESS] driver returned 64 images, clamped to %u, no large OOB\n",
-            ctx->num_swapchain_images);
+      printf("[SUCCESS] 64-image swapchain rejected before array fill\n");
 
    free(ctx);
+}
+
+static void test_driver_returns_no_images(void)
+{
+   struct mock_vk_context *ctx = (struct mock_vk_context *)
+      calloc(1, sizeof(*ctx));
+   struct mock_driver drv = { 0, (void*)0xABCD };
+
+   if (!ctx) { printf("[ERROR] calloc\n"); failures++; return; }
+
+   if (run_postfix_sequence(ctx, &drv))
+   {
+      printf("[ERROR] zero-image swapchain was accepted\n");
+      failures++;
+   }
+   else
+      printf("[SUCCESS] zero-image swapchain rejected\n");
+
+   free(ctx);
+}
+
+static void test_acquired_index_bounds(void)
+{
+   struct mock_vk_context ctx;
+
+   memset(&ctx, 0, sizeof(ctx));
+   ctx.num_swapchain_images = VULKAN_MAX_SWAPCHAIN_IMAGES;
+
+   if (!acquired_index_is_valid(&ctx, VULKAN_MAX_SWAPCHAIN_IMAGES - 1))
+   {
+      printf("[ERROR] last valid swapchain image index was rejected\n");
+      failures++;
+   }
+   else if (acquired_index_is_valid(&ctx, VULKAN_MAX_SWAPCHAIN_IMAGES))
+   {
+      printf("[ERROR] out-of-capacity swapchain image index was accepted\n");
+      failures++;
+   }
+   else
+      printf("[SUCCESS] acquired image indices are bounded before array access\n");
 }
 
 /* Probe: request-side cap.  cap_desired_request takes a
@@ -335,6 +406,8 @@ int main(void)
    test_at_capacity_boundary();
    test_driver_returns_nine_images();
    test_driver_returns_many_images();
+   test_driver_returns_no_images();
+   test_acquired_index_bounds();
    test_request_cap();
 
    if (failures)

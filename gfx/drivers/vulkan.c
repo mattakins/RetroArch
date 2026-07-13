@@ -6366,6 +6366,15 @@ static bool vulkan_frame(void *data, const void *frame,
       vk->context->current_swapchain_index;
    bool overlay_behind_menu                      = video_info->overlay_behind_menu;
 
+   /* A rejected or failed swapchain has no images to render to. Still run
+    * the context swap step once so it can recreate and acquire a new one. */
+   if (vk->context->num_swapchain_images == 0)
+   {
+      if (vk->ctx_driver->swap_buffers)
+         vk->ctx_driver->swap_buffers(vk->ctx_data);
+      return true;
+   }
+
    /* Fast toggle shader filter chain logic */
    filter_chain = vk->filter_chain;
 

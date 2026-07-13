@@ -1895,6 +1895,19 @@ retry:
    }
 
    index = vk->context.current_swapchain_index;
+   if (     index >= vk->context.num_swapchain_images
+         || index >= VULKAN_MAX_SWAPCHAIN_IMAGES)
+   {
+      RARCH_ERR("[Vulkan] Acquired invalid swapchain image index %u (count %u, capacity %u).\n",
+            index, vk->context.num_swapchain_images,
+            (unsigned)VULKAN_MAX_SWAPCHAIN_IMAGES);
+      vk->context.flags &= ~VK_CTX_FLAG_HAS_ACQUIRED_SWAPCHAIN;
+      vulkan_destroy_swapchain(vk);
+      vk->context.num_swapchain_images = 0;
+      vk->context.flags |= VK_CTX_FLAG_INVALID_SWAPCHAIN;
+      return;
+   }
+
    if (vk->context.swapchain_semaphores[index] == VK_NULL_HANDLE)
       vkCreateSemaphore(vk->context.device, &sem_info,
             NULL, &vk->context.swapchain_semaphores[index]);
@@ -2537,24 +2550,43 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
          break;
    }
 
-   vkGetSwapchainImagesKHR(vk->context.device, vk->swapchain,
-         &vk->context.num_swapchain_images, NULL);
-
-   /* Even after capping minImageCount above, drivers may legally
-    * return more images than requested. Clamp before the fill call
-    * so we don't write past swapchain_images[] and so every
-    * downstream loop bounded by num_swapchain_images stays inside
-    * its compile-time-sized array. */
-   if (vk->context.num_swapchain_images > VULKAN_MAX_SWAPCHAIN_IMAGES)
    {
-      RARCH_WARN("[Vulkan] Swapchain returned %u images, clamping to %u.\n",
-            vk->context.num_swapchain_images,
-            (unsigned)VULKAN_MAX_SWAPCHAIN_IMAGES);
-      vk->context.num_swapchain_images = VULKAN_MAX_SWAPCHAIN_IMAGES;
+      VkResult res = vkGetSwapchainImagesKHR(vk->context.device,
+            vk->swapchain, &vk->context.num_swapchain_images, NULL);
+      if (res != VK_SUCCESS)
+      {
+         RARCH_ERR("[Vulkan] Failed to query swapchain image count (err = %d).\n",
+               (int)res);
+         goto error_swapchain_images;
+      }
    }
 
-   vkGetSwapchainImagesKHR(vk->context.device, vk->swapchain,
-         &vk->context.num_swapchain_images, vk->context.swapchain_images);
+   /* A partial list is not safe here: vkAcquireNextImageKHR may return any
+    * image in the swapchain, including one outside our fixed-size arrays. */
+   if (vk->context.num_swapchain_images == 0)
+   {
+      RARCH_ERR("[Vulkan] Swapchain returned no images.\n");
+      goto error_swapchain_images;
+   }
+   if (vk->context.num_swapchain_images > VULKAN_MAX_SWAPCHAIN_IMAGES)
+   {
+      RARCH_ERR("[Vulkan] Swapchain returned %u images, exceeding capacity %u.\n",
+            vk->context.num_swapchain_images,
+            (unsigned)VULKAN_MAX_SWAPCHAIN_IMAGES);
+      goto error_swapchain_images;
+   }
+
+   {
+      VkResult res = vkGetSwapchainImagesKHR(vk->context.device,
+            vk->swapchain, &vk->context.num_swapchain_images,
+            vk->context.swapchain_images);
+      if (res != VK_SUCCESS)
+      {
+         RARCH_ERR("[Vulkan] Failed to query swapchain images (err = %d).\n",
+               (int)res);
+         goto error_swapchain_images;
+      }
+   }
 
    if (old_swapchain == VK_NULL_HANDLE)
       RARCH_LOG("[Vulkan] Got %u swapchain images.\n",
@@ -2602,6 +2634,13 @@ bool vulkan_create_swapchain(gfx_ctx_vulkan_data_t *vk,
    /* This flag needs to be cleared otherwise elsewhere it can be perceived as if there's a new swapchain created everytime its being called */
    vk->flags &= ~VK_DATA_FLAG_CREATED_NEW_SWAPCHAIN;
    return true;
+
+error_swapchain_images:
+   vulkan_destroy_swapchain(vk);
+   vk->context.num_swapchain_images = 0;
+   vk->context.flags               |= VK_CTX_FLAG_INVALID_SWAPCHAIN;
+   vk->flags                       &= ~VK_DATA_FLAG_CREATED_NEW_SWAPCHAIN;
+   return false;
 }
 
 bool vulkan_context_init(gfx_ctx_vulkan_data_t *vk,
