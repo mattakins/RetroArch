@@ -365,6 +365,142 @@ bool android_input_can_be_keyboard(void *data, int port)
     return android_input_can_be_keyboard_jni(device->id);
 }
 
+static void android_input_record_window_state(
+      struct android_app *android_app, const char *event,
+      bool window_resized)
+{
+   int32_t config_orientation;
+   int32_t native_width;
+   int32_t native_height;
+   unsigned width  = 0;
+   unsigned height = 0;
+
+   AConfiguration_fromAssetManager(android_app->config,
+         android_app->activity->assetManager);
+   config_orientation = AConfiguration_getOrientation(android_app->config);
+
+   if (android_app->window)
+   {
+      native_width  = ANativeWindow_getWidth(android_app->window);
+      native_height = ANativeWindow_getHeight(android_app->window);
+      if (native_width > 0 && native_height > 0)
+      {
+         width  = (unsigned)native_width;
+         height = (unsigned)native_height;
+      }
+   }
+
+   slock_lock(android_app->mutex);
+   if (config_orientation != ACONFIGURATION_ORIENTATION_ANY
+         && android_app->config_orientation
+               != ACONFIGURATION_ORIENTATION_ANY
+         && config_orientation != android_app->config_orientation)
+   {
+      android_app->rotation_pending = true;
+      /* A resize observed before this orientation change belongs to the
+       * previous window state and cannot satisfy the new rotation. */
+      android_app->completed_window_resize_generation =
+            android_app->window_resize_generation;
+      RARCH_LOG("[Android] Orientation change pending: %d -> %d.\n",
+            android_app->config_orientation, config_orientation);
+   }
+   android_app->config_orientation    = config_orientation;
+   android_app->native_window_width   = width;
+   android_app->native_window_height  = height;
+   if (window_resized)
+   {
+      android_app->window_resize_generation++;
+      android_app->window_resize_pending_since_usec =
+            cpu_features_get_time_usec();
+   }
+   RARCH_LOG("[Android] %s: orientation=%d window=%ux%u "
+         "requested=%llu active=%llu resize=%llu.\n",
+         event, config_orientation,
+         width, height,
+         (unsigned long long)android_app->redraw_requested_generation,
+         (unsigned long long)android_app->rotation_generation,
+         (unsigned long long)android_app->window_resize_generation);
+   slock_unlock(android_app->mutex);
+}
+
+static void android_input_begin_window_redraw(struct android_app *android_app)
+{
+   video_driver_state_t *state = video_state_get_ptr();
+   bool is_vulkan = state->current_video_context.ident
+         && string_is_equal(state->current_video_context.ident, "vk_android")
+         && state->context_data;
+   uint64_t generation;
+
+   android_input_record_window_state(android_app,
+         "APP_CMD_WINDOW_REDRAW_NEEDED", false);
+
+   slock_lock(android_app->mutex);
+   generation = android_app->redraw_requested_generation;
+
+   if (!generation
+         || generation <= android_app->redraw_completed_generation
+         || generation <= android_app->redraw_cancelled_generation)
+   {
+      if (generation <= android_app->redraw_cancelled_generation)
+      {
+         android_app->completed_window_resize_generation =
+               android_app->window_resize_generation;
+         android_app->window_resize_pending_since_usec = 0;
+         android_app->content_rect.changed = false;
+      }
+      RARCH_LOG("[Android] Ignoring inactive redraw generation=%llu.\n",
+            (unsigned long long)generation);
+      scond_broadcast(android_app->cond);
+      slock_unlock(android_app->mutex);
+      return;
+   }
+
+   if (!is_vulkan || !android_app->rotation_pending)
+   {
+      android_app->redraw_completed_generation = generation;
+      RARCH_LOG("[Android] Redraw generation=%llu does not require a "
+            "rotation rebuild.\n", (unsigned long long)generation);
+      scond_broadcast(android_app->cond);
+      slock_unlock(android_app->mutex);
+      return;
+   }
+
+   android_app->rotation_generation             = generation;
+   android_app->redraw_window_resize_generation =
+         android_app->window_resize_generation;
+   android_app->window_resize_pending_since_usec = 0;
+   android_app->swapchain_recreate_generation   = 0;
+   android_app->swapchain_recreated_generation  = 0;
+   RARCH_LOG("[Android] Redraw generation=%llu is the Vulkan rebuild "
+         "boundary.\n", (unsigned long long)generation);
+   slock_unlock(android_app->mutex);
+}
+
+static void android_input_cancel_window_redraw(
+      struct android_app *android_app, const char *reason)
+{
+   slock_lock(android_app->mutex);
+   if (android_app->redraw_requested_generation
+         > android_app->redraw_completed_generation
+         && android_app->redraw_requested_generation
+         > android_app->redraw_cancelled_generation)
+   {
+      android_app->redraw_cancelled_generation =
+            android_app->redraw_requested_generation;
+      android_app->completed_window_resize_generation =
+            android_app->window_resize_generation;
+      android_app->window_resize_pending_since_usec = 0;
+      android_app->content_rect.changed = false;
+      RARCH_WARN("[Android] Cancelling window redraw generation=%llu: %s.\n",
+            (unsigned long long)android_app->redraw_cancelled_generation,
+            reason);
+   }
+   android_app->rotation_pending = false;
+
+   scond_broadcast(android_app->cond);
+   slock_unlock(android_app->mutex);
+}
+
 static void android_input_poll_main_cmd(void)
 {
    int8_t cmd;
@@ -446,6 +582,8 @@ static void android_input_poll_main_cmd(void)
          scond_broadcast(android_app->cond);
          slock_unlock(android_app->mutex);
 
+         android_input_cancel_window_redraw(android_app, "activity stopped");
+
          /* Android may retain the same ANativeWindow while the app is
           * backgrounded. Release Vulkan's acquired buffers anyway so BLAST
           * cannot wedge before APP_CMD_TERM_WINDOW is delivered. */
@@ -458,10 +596,18 @@ static void android_input_poll_main_cmd(void)
       }
 
       case APP_CMD_CONFIG_CHANGED:
-         AConfiguration_fromAssetManager(android_app->config,
-               android_app->activity->assetManager);
+         android_input_record_window_state(android_app,
+               "APP_CMD_CONFIG_CHANGED", false);
+         break;
+      case APP_CMD_WINDOW_RESIZED:
+         android_input_record_window_state(android_app,
+               "APP_CMD_WINDOW_RESIZED", true);
+         break;
+      case APP_CMD_WINDOW_REDRAW_NEEDED:
+         android_input_begin_window_redraw(android_app);
          break;
       case APP_CMD_TERM_WINDOW:
+         android_input_cancel_window_redraw(android_app, "window terminated");
          slock_lock(android_app->mutex);
 
          /* The window is being hidden or closed, clean it up. */
@@ -610,7 +756,11 @@ static void android_input_poll_main_cmd(void)
          break;
 
       case APP_CMD_DESTROY:
+         android_input_cancel_window_redraw(android_app, "activity destroyed");
+         slock_lock(android_app->mutex);
          android_app->destroyRequested = 1;
+         scond_broadcast(android_app->cond);
+         slock_unlock(android_app->mutex);
          break;
    }
 }

@@ -105,6 +105,8 @@
 #ifdef ANDROID
 static void frontend_unix_set_sustained_performance_mode(bool on);
 
+#define ANDROID_REDRAW_TIMEOUT_US 2000000
+
 enum
 {
    /* Internal SDCARD writable */
@@ -382,6 +384,68 @@ static void onNativeWindowCreated(ANativeActivity* activity,
    android_app_set_window((struct android_app*)activity->instance, window);
 }
 
+static void onNativeWindowResized(ANativeActivity* activity,
+      ANativeWindow* window)
+{
+   android_app_write_cmd((struct android_app*)activity->instance,
+         APP_CMD_WINDOW_RESIZED);
+}
+
+static void onNativeWindowRedrawNeeded(ANativeActivity* activity,
+      ANativeWindow* window)
+{
+   struct android_app *android_app =
+         (struct android_app*)activity->instance;
+   retro_time_t deadline;
+   uint64_t generation;
+
+   if (!android_app)
+      return;
+
+   slock_lock(android_app->mutex);
+   generation = ++android_app->redraw_requested_generation;
+   if (!generation)
+      generation = ++android_app->redraw_requested_generation;
+
+   RARCH_LOG("[Android] Window redraw requested: generation=%llu.\n",
+         (unsigned long long)generation);
+   android_app_write_cmd(android_app, APP_CMD_WINDOW_REDRAW_NEEDED);
+
+   deadline = cpu_features_get_time_usec() + ANDROID_REDRAW_TIMEOUT_US;
+   while (android_app->redraw_completed_generation < generation
+         && android_app->redraw_cancelled_generation < generation
+         && !android_app->destroyed)
+   {
+      retro_time_t now       = cpu_features_get_time_usec();
+      int64_t remaining_time = deadline - now;
+
+      if (remaining_time <= 0
+            || !scond_wait_timeout(android_app->cond,
+                  android_app->mutex, remaining_time))
+      {
+         android_app->redraw_cancelled_generation = generation;
+         android_app->rotation_pending = false;
+         android_app->completed_window_resize_generation =
+               android_app->window_resize_generation;
+         android_app->window_resize_pending_since_usec = 0;
+         android_app->content_rect.changed = false;
+         RARCH_WARN("[Android] Window redraw timed out: generation=%llu.\n",
+               (unsigned long long)generation);
+         scond_broadcast(android_app->cond);
+         break;
+      }
+   }
+
+   if (android_app->redraw_completed_generation >= generation)
+      RARCH_LOG("[Android] Window redraw completed: generation=%llu.\n",
+            (unsigned long long)generation);
+   else if (android_app->redraw_cancelled_generation >= generation)
+      RARCH_WARN("[Android] Window redraw cancelled: generation=%llu.\n",
+            (unsigned long long)generation);
+
+   slock_unlock(android_app->mutex);
+}
+
 static void onNativeWindowDestroyed(ANativeActivity* activity,
       ANativeWindow* window)
 {
@@ -405,9 +469,14 @@ static void onContentRectChanged(ANativeActivity *activity,
    struct android_app *instance = (struct android_app*)activity->instance;
    unsigned width = rect->right - rect->left;
    unsigned height = rect->bottom - rect->top;
+   slock_lock(instance->mutex);
    instance->content_rect.changed = true;
    instance->content_rect.width   = width;
    instance->content_rect.height  = height;
+   if (!instance->window_resize_pending_since_usec)
+      instance->window_resize_pending_since_usec =
+            cpu_features_get_time_usec();
+   slock_unlock(instance->mutex);
 }
 
 JNIEnv *jni_thread_getenv(void)
@@ -560,6 +629,9 @@ void ANativeActivity_onCreate(ANativeActivity* activity,
    activity->callbacks->onLowMemory             = onLowMemory;
    activity->callbacks->onWindowFocusChanged    = onWindowFocusChanged;
    activity->callbacks->onNativeWindowCreated   = onNativeWindowCreated;
+   activity->callbacks->onNativeWindowResized   = onNativeWindowResized;
+   activity->callbacks->onNativeWindowRedrawNeeded =
+         onNativeWindowRedrawNeeded;
    activity->callbacks->onNativeWindowDestroyed = onNativeWindowDestroyed;
    activity->callbacks->onInputQueueCreated     = onInputQueueCreated;
    activity->callbacks->onInputQueueDestroyed   = onInputQueueDestroyed;
@@ -2291,6 +2363,8 @@ static void frontend_unix_init(void *data)
    android_app->config             = AConfiguration_new();
    AConfiguration_fromAssetManager(android_app->config,
          android_app->activity->assetManager);
+   android_app->config_orientation =
+         AConfiguration_getOrientation(android_app->config);
 
    looper = (ALooper*)ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
    ALooper_addFd(looper, android_app->msgread, LOOPER_ID_MAIN,

@@ -2927,7 +2927,7 @@ void vulkan_context_destroy(gfx_ctx_vulkan_data_t *vk,
    }
 }
 
-void vulkan_present(gfx_ctx_vulkan_data_t *vk, unsigned index)
+bool vulkan_present(gfx_ctx_vulkan_data_t *vk, unsigned index)
 {
    VkPresentInfoKHR present;
    VkResult result                 = VK_SUCCESS;
@@ -2973,4 +2973,6 @@ void vulkan_present(gfx_ctx_vulkan_data_t *vk, unsigned index)
 #ifdef HAVE_THREADS
    slock_unlock(vk->context.queue_lock);
 #endif
+
+   return err == VK_SUCCESS && result == VK_SUCCESS;
 }

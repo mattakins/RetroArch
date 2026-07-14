@@ -113,6 +113,20 @@ struct android_app
    int activityState;
 
    int reinitRequested;
+   int32_t config_orientation;
+   bool rotation_pending;
+   unsigned native_window_width;
+   unsigned native_window_height;
+   uint64_t redraw_requested_generation;
+   uint64_t rotation_generation;
+   uint64_t window_resize_generation;
+   uint64_t redraw_window_resize_generation;
+   uint64_t completed_window_resize_generation;
+   int64_t window_resize_pending_since_usec;
+   uint64_t swapchain_recreate_generation;
+   uint64_t swapchain_recreated_generation;
+   uint64_t redraw_completed_generation;
+   uint64_t redraw_cancelled_generation;
 
    /* This is non-zero when the application's NativeActivity is being
     * destroyed and waiting for the app thread to complete. */
