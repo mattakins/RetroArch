@@ -426,10 +426,14 @@ static void android_input_poll_main_cmd(void)
 
          slock_lock(android_app->mutex);
          android_app->activityState = cmd;
+         /* RESUME/START can arrive before INIT_WINDOW. In that case,
+          * wait for INIT_WINDOW rather than falling back to a full
+          * video-driver reinitialization without a native window. */
          if (  (cmd == APP_CMD_RESUME || cmd == APP_CMD_START)
              && state->current_video_context.ident
              && string_is_equal(state->current_video_context.ident,
                    "vk_android")
+             && android_app->window
              && state->current_video_context.create_surface)
             android_app->reinitRequested = 1;
          scond_broadcast(android_app->cond);
