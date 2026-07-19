@@ -788,6 +788,21 @@ static bool vulkan_context_init_device(gfx_ctx_vulkan_data_t *vk)
 
       if (ret)
       {
+         if (context.gpu == VK_NULL_HANDLE ||
+             context.device == VK_NULL_HANDLE ||
+             context.queue == VK_NULL_HANDLE)
+         {
+            RARCH_ERR("[Vulkan] HW context negotiation succeeded without a valid physical device, device, and queue.\n");
+
+            if (iface->destroy_device)
+               iface->destroy_device();
+
+            if (context.device != VK_NULL_HANDLE)
+               vkDestroyDevice(context.device, NULL);
+
+            return false;
+         }
+
          if (vk->context.gpu != VK_NULL_HANDLE && context.gpu != vk->context.gpu)
             RARCH_ERR("[Vulkan] Got unexpected VkPhysicalDevice, despite RetroArch using explicit physical device.\n");
 
