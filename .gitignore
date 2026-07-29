@@ -291,3 +291,6 @@ gfx/drivers/rsx_shaders/modern_opaque.fpo
 gfx/drivers/rsx_shaders/modern_opaque.vpo
 pkg/psl1ght/pkg/USRDIR/shaders_cg/
 !pkg/psl1ght/pkg/USRDIR/system/
+
+# Android SDK system images — downloaded via sdkmanager, 33MB
+/system-images/
