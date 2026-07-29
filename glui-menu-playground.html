@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RetroArch MaterialUI (GLUI) Menu Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* Material UI Dark theme */
+    --sys-bar-bg: #000000;
+    --sys-bar-text: #C4C4C4;
+    --title-bar-bg: #1F1F1F;
+    --title-bar-text: #FFFFFF;
+    --list-bg: #121212;
+    --list-text: #DEDEDE;
+    --list-text-highlight: #FFFFFF;
+    --list-hint: #999999;
+    --list-hint-highlight: #DEDEDE;
+    --list-highlight-bg: #51455E;
+    --list-icon: #BB86FC;
+    --nav-bar-bg: #242424;
+    --nav-bar-active: #03DAC6;
+    --nav-bar-passive: #00A895;
+    --nav-bar-disabled: #333333;
+    --divider: #03DAC6;
+    --scrollbar: #C89EFC;
+    --switch-on: #03DAC5;
+    --switch-off: #BB86FC;
+    --status-bar-bg: #242424;
+    --status-bar-text: #999999;
+
+    --sys-bar-height: 30px;
+    --title-bar-height: 71px;
+    --nav-bar-height: 71px;
+    --entry-height: 56px;
+    --icon-size: 24px;
+    --margin: 24px;
+  }
+
+  body {
+    background: #0a0a0a;
+    color: var(--list-text);
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top toolbar */
+  .toolbar {
+    background: #0a0a0a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .toolbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    margin-right: auto;
+  }
+  .toolbar-btn {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toolbar-btn:hover { background: #3a3a3a; }
+  .toolbar-btn.active { background: var(--nav-bar-active); color: #000; border-color: var(--nav-bar-active); }
+  .toolbar-label { font-size: 11px; color: #666; }
+
+  /* Main container */
+  .sim-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* GLUI frame */
+  .glui {
+    flex: 1;
+    background: var(--list-bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: 480px;
+    margin: 0 auto;
+    border-left: 1px solid #333;
+    border-right: 1px solid #333;
+  }
+
+  /* System bar */
+  .glui-sysbar {
+    height: var(--sys-bar-height);
+    background: var(--sys-bar-bg);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 18px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .sysbar-item {
+    font-size: 12px;
+    color: var(--sys-bar-text);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sysbar-battery {
+    width: 18px;
+    height: 9px;
+    border: 1.5px solid var(--sys-bar-text);
+    border-radius: 2px;
+    position: relative;
+  }
+  .sysbar-battery::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 1.5px;
+    width: 2px;
+    height: 4px;
+    background: var(--sys-bar-text);
+    border-radius: 0 1px 1px 0;
+  }
+  .sysbar-battery-fill {
+    height: 100%;
+    width: 75%;
+    background: var(--sys-bar-text);
+  }
+
+  /* Title bar */
+  .glui-titlebar {
+    height: var(--title-bar-height);
+    background: var(--title-bar-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--margin);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 2;
+  }
+  .titlebar-back {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    margin-left: -12px;
+    margin-right: 8px;
+    transition: background 0.15s;
+  }
+  .titlebar-back:hover { background: rgba(255,255,255,0.1); }
+  .titlebar-back svg { fill: var(--title-bar-text); width: 24px; height: 24px; }
+  .titlebar-back.disabled { opacity: 0.3; pointer-events: none; }
+  .titlebar-title {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--title-bar-text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .titlebar-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .titlebar-action {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background 0.15s;
+  }
+  .titlebar-action:hover { background: rgba(255,255,255,0.1); }
+  .titlebar-action svg { fill: var(--title-bar-text); width: 24px; height: 24px; }
+
+  /* Content list */
+  .glui-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+  .glui-content::-webkit-scrollbar { width: 6px; }
+  .glui-content::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+  .glui-entry {
+    display: flex;
+    align-items: center;
+    min-height: var(--entry-height);
+    padding: 12px var(--margin);
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+    border-bottom: 1px solid rgba(3, 218, 198, 0.15);
+  }
+  .glui-entry:hover {
+    background: rgba(255,255,255,0.03);
+  }
+  .glui-entry.selected {
+    background: var(--list-highlight-bg);
+  }
+  .glui-entry.selected::before,
+  .glui-entry.selected::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 6px;
+    pointer-events: none;
+  }
+  .glui-entry.selected::before {
+    top: 0;
+    background: linear-gradient(to bottom, rgba(59,59,59,0.2), transparent);
+  }
+  .glui-entry.selected::after {
+    bottom: 0;
+    background: linear-gradient(to top, rgba(59,59,59,0.2), transparent);
+  }
+
+  .entry-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    flex-shrink: 0;
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--list-icon);
+  }
+  .glui-entry.selected .entry-icon { color: var(--title-bar-text); }
+
+  .entry-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .entry-label {
+    font-size: 16px;
+    color: var(--list-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .glui-entry.selected .entry-label { color: var(--list-text-highlight); }
+
+  .entry-sublabel {
+    font-size: 13px;
+    color: var(--list-hint);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .glui-entry.selected .entry-sublabel { color: var(--list-hint-highlight); }
+
+  .entry-value {
+    font-size: 14px;
+    color: var(--nav-bar-active);
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .entry-arrow {
+    color: var(--list-hint);
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .entry-badge {
+    background: rgba(187, 134, 252, 0.2);
+    color: var(--list-icon);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    margin-left: 8px;
+    text-transform: uppercase;
+  }
+
+  .entry-switch {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    position: relative;
+    flex-shrink: 0;
+    margin-left: 12px;
+    transition: background 0.2s;
+  }
+  .entry-switch.on { background: rgba(3, 218, 197, 0.3); }
+  .entry-switch.off { background: rgba(187, 134, 252, 0.3); }
+  .entry-switch::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    top: 2px;
+    transition: left 0.2s, background 0.2s;
+  }
+  .entry-switch.on::after { left: 18px; background: var(--switch-on); }
+  .entry-switch.off::after { left: 2px; background: var(--switch-off); }
+
+  /* Status bar */
+  .glui-statusbar {
+    height: 32px;
+    background: var(--status-bar-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--margin);
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--status-bar-text);
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* Navigation bar */
+  .glui-navbar {
+    height: var(--nav-bar-height);
+    background: var(--nav-bar-bg);
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    border-top: 1px solid var(--divider);
+  }
+  .navbar-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    gap: 4px;
+  }
+  .navbar-tab:hover { background: rgba(255,255,255,0.03); }
+  .navbar-tab.active .navbar-icon { color: var(--nav-bar-active); }
+  .navbar-tab.active .navbar-label { color: var(--nav-bar-active); }
+  .navbar-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 3px;
+    background: var(--nav-bar-active);
+    border-radius: 3px 3px 0 0;
+  }
+  .navbar-tab.disabled { opacity: 0.3; pointer-events: none; }
+  .navbar-icon {
+    font-size: 20px;
+    color: var(--nav-bar-passive);
+    transition: color 0.15s;
+  }
+  .navbar-label {
+    font-size: 10px;
+    color: var(--nav-bar-passive);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+  }
+
+  /* Prompt panel */
+  .prompt-panel {
+    width: 380px;
+    background: #0f0f0f;
+    border-left: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .prompt-header {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #222;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .copy-btn {
+    background: var(--nav-bar-active);
+    border: none;
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: #00b8a9; }
+  .prompt-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #aaa;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+  }
+  .prompt-body code {
+    background: #222;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+    color: var(--nav-bar-active);
+  }
+
+  /* Search */
+  .search-input {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--nav-bar-active); }
+  .search-input::placeholder { color: #666; }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--list-hint);
+    font-size: 14px;
+    gap: 8px;
+    padding: 40px;
+    text-align: center;
+  }
+  .empty-state .empty-icon { font-size: 48px; opacity: 0.3; }
+
+  /* Group header */
+  .entry-group {
+    padding: 16px var(--margin) 8px;
+    font-size: 12px;
+    color: var(--list-icon);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">RetroArch MaterialUI (GLUI) Menu Simulator</span>
+  <span class="toolbar-label">Search:</span>
+  <input type="text" id="globalSearch" class="search-input" placeholder="Filter menu items..." style="width:200px;padding:3px 10px;font-size:12px;">
+  <button class="toolbar-btn" onclick="collapseAll()">Reset</button>
+</div>
+
+<div class="sim-container">
+  <div class="glui">
+    <!-- System bar -->
+    <div class="glui-sysbar">
+      <span class="sysbar-item" id="sysbarClock"></span>
+      <span class="sysbar-item">
+        <div class="sysbar-battery"><div class="sysbar-battery-fill"></div></div>
+        75%
+      </span>
+    </div>
+
+    <!-- Title bar -->
+    <div class="glui-titlebar">
+      <div class="titlebar-back disabled" id="titlebarBack" onclick="goBack()">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </div>
+      <span class="titlebar-title" id="titlebarTitle">Main Menu</span>
+      <div class="titlebar-actions">
+        <div class="titlebar-action" title="Search">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content list -->
+    <div class="glui-content" id="contentList"></div>
+
+    <!-- Status bar -->
+    <div class="glui-statusbar" id="statusBar">
+      RetroArch · No content loaded
+    </div>
+
+    <!-- Navigation bar -->
+    <div class="glui-navbar">
+      <div class="navbar-tab disabled" id="navBack" onclick="goBack()">
+        <span class="navbar-icon">←</span>
+        <span class="navbar-label">Back</span>
+      </div>
+      <div class="navbar-tab active" id="navMain" onclick="selectNavTab('main')">
+        <span class="navbar-icon">⬡</span>
+        <span class="navbar-label">Main</span>
+      </div>
+      <div class="navbar-tab" id="navPlaylists" onclick="selectNavTab('playlists')">
+        <span class="navbar-icon">📋</span>
+        <span class="navbar-label">Playlists</span>
+      </div>
+      <div class="navbar-tab" id="navSettings" onclick="selectNavTab('settings')">
+        <span class="navbar-icon">⚙</span>
+        <span class="navbar-label">Settings</span>
+      </div>
+      <div class="navbar-tab disabled" id="navResume">
+        <span class="navbar-icon">▶</span>
+        <span class="navbar-label">Resume</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt output -->
+  <div class="prompt-panel">
+    <div class="prompt-header">
+      <span>Menu Path Output</span>
+      <button class="copy-btn" onclick="copyPrompt()">Copy</button>
+    </div>
+    <div class="prompt-body" id="promptBody">
+      <p>Click on any menu item to see its full path and context. Use the navigation bar tabs to switch between Main Menu, Playlists, and Settings.</p>
+      <p style="margin-top:12px;color:#666"><strong>GLUI vs Ozone:</strong> MaterialUI has Settings as a direct nav-bar tab (same level as Main Menu), not nested inside a sidebar.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// GLUI MENU DATA (same content as Ozone, different presentation)
+// ═══════════════════════════════════════════════════
+
+const MENU_DATA = {
+  main: {
+    label: "Main Menu",
+    items: [
+      { label: "Quick Menu", sublabel: "Shown when content is running", icon: "⏩", badge: "CORE RUNNING",
+        children: [
+          { label: "Resume Content", sublabel: "Return to the running content", icon: "▶" },
+          { label: "Restart Content", sublabel: "Reset the current content", icon: "🔄" },
+          { label: "Close Content", sublabel: "Stop and return to menu", icon: "⏹" },
+          { label: "Save States", sublabel: "Save/load states and replays", icon: "💾",
+            children: [
+              { label: "State Slot", value: "0", icon: "🔢" },
+              { label: "Save State", icon: "💾" },
+              { label: "Load State", icon: "📂" },
+              { label: "Undo Save State", icon: "↩" },
+              { label: "Undo Load State", icon: "↩" }
+            ]
+          },
+          { label: "Core Options", sublabel: "Core-specific settings", icon: "⚙" },
+          { label: "Controls", sublabel: "Remap inputs for this core", icon: "🎮" },
+          { label: "Shaders", sublabel: "Video shader effects", icon: "🎨", badge: "SHADERS" },
+          { label: "Cheats", sublabel: "Cheat codes", icon: "🔓", badge: "CHEATS" },
+          { label: "Overrides", sublabel: "Config overrides", icon: "📄" },
+          { label: "Achievements", sublabel: "RetroAchievements", icon: "🏆", badge: "CHEEVOS" },
+          { label: "Take Screenshot", icon: "📷" },
+          { label: "Information", sublabel: "Content details", icon: "ℹ" }
+        ]
+      },
+      { label: "Load Core", sublabel: "Select a libretro core", icon: "⚙" },
+      { label: "Load Content", sublabel: "Select content to run", icon: "📂",
+        children: [
+          { label: "Start Directory", sublabel: "Browse filesystem", icon: "📁" },
+          { label: "Downloads", icon: "📥" },
+          { label: "Favorites", icon: "★" },
+          { label: "History", icon: "📜" }
+        ]
+      },
+      { label: "History", sublabel: "Recently played content", icon: "📜",
+        children: [
+          { label: "Super Mario World", sublabel: "snes9x | 2h 15m | Today", icon: "🎮" },
+          { label: "Zelda: A Link to the Past", sublabel: "snes9x | 5h 30m | Yesterday", icon: "🎮" },
+          { label: "Sonic the Hedgehog 2", sublabel: "genesis_plus_gx | 1h 05m", icon: "🎮" },
+          { label: "Castlevania: SOTN", sublabel: "beetle_psx_hw | 8h 20m", icon: "🎮" },
+          { label: "Pokemon FireRed", sublabel: "mgba | 12h 45m", icon: "🎮" }
+        ]
+      },
+      { label: "Favorites", sublabel: "Your favorite content", icon: "★",
+        children: [
+          { label: "Super Mario World", sublabel: "snes9x", icon: "★" },
+          { label: "Chrono Trigger", sublabel: "snes9x", icon: "★" },
+          { label: "Castlevania: SOTN", sublabel: "beetle_psx_hw", icon: "★" }
+        ]
+      },
+      { label: "Load Disc", sublabel: "Load from optical drive", icon: "💿", badge: "CDROM" },
+      { label: "Dump Disc", sublabel: "Dump disc to image", icon: "💿", badge: "CDROM" },
+      { label: "Online Updater", sublabel: "Download cores and assets", icon: "🌐",
+        children: [
+          { label: "Core Downloader", icon: "⬇" },
+          { label: "Update Installed Cores", icon: "🔄" },
+          { label: "Update Core Info Files", icon: "🔄" },
+          { label: "Update Assets", icon: "🔄" },
+          { label: "Update Controller Profiles", icon: "🎮" },
+          { label: "Update Cheats", icon: "🔄" },
+          { label: "Update Databases", icon: "🔄" },
+          { label: "Update Overlays", icon: "🔄" },
+          { label: "Update Slang Shaders", icon: "🔄" }
+        ]
+      },
+      { label: "Information", sublabel: "System and core info", icon: "ℹ",
+        children: [
+          { label: "Core Information", icon: "⚙" },
+          { label: "System Information", icon: "🖥" },
+          { label: "Database Manager", icon: "📊" },
+          { label: "Network Information", icon: "🌐", badge: "NETWORKING" }
+        ]
+      },
+      { label: "Configuration File", sublabel: "Save/load config", icon: "📄",
+        children: [
+          { label: "Save Current Configuration", icon: "💾" },
+          { label: "Save New Configuration", icon: "💾" },
+          { label: "Reset to Defaults", icon: "↩" }
+        ]
+      },
+      { label: "Restart", sublabel: "Restart RetroArch", icon: "🔄" },
+      { label: "Quit", sublabel: "Exit RetroArch", icon: "⏻" }
+    ]
+  },
+  playlists: {
+    label: "Playlists",
+    items: [
+      { label: "Import Content", sublabel: "Scan for content", icon: "📥" },
+      { label: "Manual Scan", sublabel: "Custom scan settings", icon: "✏" },
+      { label: "Nintendo - SNES", sublabel: "25 games", icon: "🎮",
+        children: [
+          { label: "Super Mario World", sublabel: "snes9x | 2h 15m", icon: "🎮",
+            children: [
+              { label: "Run", icon: "▶" },
+              { label: "Add to Favorites", icon: "★" },
+              { label: "Set Core Association", icon: "⚙" },
+              { label: "Download Thumbnails", icon: "🖼" },
+              { label: "Remove Entry", icon: "🗑" },
+              { label: "Information", icon: "ℹ" }
+            ]
+          },
+          { label: "Zelda: A Link to the Past", sublabel: "snes9x | 5h 30m", icon: "🎮" },
+          { label: "Chrono Trigger", sublabel: "snes9x | 18h 15m", icon: "🎮" },
+          { label: "Final Fantasy VI", sublabel: "snes9x | 22h 30m", icon: "🎮" },
+          { label: "Super Metroid", sublabel: "snes9x | 4h 45m", icon: "🎮" },
+          { label: "Mega Man X", sublabel: "snes9x | 3h 10m", icon: "🎮" },
+          { label: "Donkey Kong Country", sublabel: "snes9x", icon: "🎮" },
+          { label: "EarthBound", sublabel: "snes9x", icon: "🎮" },
+          { label: "Secret of Mana", sublabel: "snes9x", icon: "🎮" }
+        ]
+      },
+      { label: "Sega - Genesis", sublabel: "18 games", icon: "🎮",
+        children: [
+          { label: "Sonic the Hedgehog 2", sublabel: "genesis_plus_gx", icon: "🎮" },
+          { label: "Streets of Rage 2", sublabel: "genesis_plus_gx", icon: "🎮" },
+          { label: "Gunstar Heroes", sublabel: "genesis_plus_gx", icon: "🎮" }
+        ]
+      },
+      { label: "Sony - PlayStation", sublabel: "32 games", icon: "🎮",
+        children: [
+          { label: "Castlevania: SOTN", sublabel: "beetle_psx_hw | 8h 20m", icon: "🎮" },
+          { label: "Final Fantasy VII", sublabel: "beetle_psx_hw", icon: "🎮" },
+          { label: "Metal Gear Solid", sublabel: "beetle_psx_hw", icon: "🎮" }
+        ]
+      },
+      { label: "Nintendo - GBA", sublabel: "15 games", icon: "🎮",
+        children: [
+          { label: "Pokemon FireRed", sublabel: "mgba | 12h 45m", icon: "🎮" },
+          { label: "Metroid Fusion", sublabel: "mgba", icon: "🎮" },
+          { label: "Golden Sun", sublabel: "mgba", icon: "🎮" }
+        ]
+      }
+    ]
+  },
+  settings: {
+    label: "Settings",
+    items: [
+      { label: "Drivers", sublabel: "Video, audio, input drivers", icon: "🔧",
+        children: [
+          { label: "Video Driver", value: "vulkan", icon: "🖥" },
+          { label: "Audio Driver", value: "pulse", icon: "🔊" },
+          { label: "Input Driver", value: "udev", icon: "🎮" },
+          { label: "Joypad Driver", value: "udev", icon: "🕹" },
+          { label: "Menu Driver", value: "glui", icon: "📋" },
+          { label: "Recording Driver", value: "ffmpeg", icon: "⏺" },
+          { label: "Camera Driver", value: "null", icon: "📷" },
+          { label: "Location Driver", value: "null", icon: "📍" }
+        ]
+      },
+      { label: "Video", sublabel: "Display and rendering", icon: "🖥",
+        children: [
+          { label: "Output", icon: "🖥",
+            children: [
+              { label: "Video Driver", value: "vulkan" },
+              { label: "Threaded Video", value: "OFF", isSwitch: true },
+              { label: "Monitor Index", value: "0" },
+              { label: "Refresh Rate", value: "60.00 Hz" }
+            ]
+          },
+          { label: "Scaling", icon: "📐",
+            children: [
+              { label: "Integer Scale", value: "OFF", isSwitch: true },
+              { label: "Aspect Ratio", value: "Core Provided" },
+              { label: "Crop Overscan", value: "ON", isSwitch: true }
+            ]
+          },
+          { label: "Synchronization", icon: "🔄",
+            children: [
+              { label: "VSync", value: "ON", isSwitch: true },
+              { label: "Swap Interval", value: "1" },
+              { label: "Frame Delay", value: "0 ms" },
+              { label: "Hard GPU Sync", value: "OFF", isSwitch: true }
+            ]
+          },
+          { label: "Fullscreen Mode", icon: "⬜" },
+          { label: "Windowed Mode", icon: "🪟" },
+          { label: "HDR", icon: "☀", badge: "HDR" }
+        ]
+      },
+      { label: "Audio", sublabel: "Sound output settings", icon: "🔊",
+        children: [
+          { label: "Output", icon: "🔊",
+            children: [
+              { label: "Audio Enable", value: "ON", isSwitch: true },
+              { label: "Audio Driver", value: "pulse" },
+              { label: "Output Rate", value: "48000 Hz" },
+              { label: "Audio Latency", value: "64 ms" }
+            ]
+          },
+          { label: "Synchronization", icon: "🔄" },
+          { label: "MIDI", icon: "🎵" },
+          { label: "Mixer", icon: "🎚" },
+          { label: "Menu Sounds", icon: "🔔" },
+          { label: "Volume", value: "0.0 dB", icon: "🔊" },
+          { label: "Mute", value: "OFF", isSwitch: true, icon: "🔇" }
+        ]
+      },
+      { label: "Input", sublabel: "Controllers and hotkeys", icon: "🎮",
+        children: [
+          { label: "RetroPad Binds", icon: "🎮" },
+          { label: "Turbo Fire", icon: "🔥" },
+          { label: "Hotkey Binds", icon: "⌨" },
+          { label: "Menu Controls", icon: "📋" },
+          { label: "Haptic Feedback", icon: "📳" },
+          { label: "Max Users", value: "5", icon: "👥" },
+          { label: "Autodetect Enable", value: "ON", isSwitch: true, icon: "⚙" }
+        ]
+      },
+      { label: "Latency", sublabel: "Reduce input lag", icon: "⏱",
+        children: [
+          { label: "Frame Delay Auto", value: "ON", isSwitch: true },
+          { label: "Frame Delay", value: "0 ms" },
+          { label: "Run-Ahead Mode", value: "OFF" },
+          { label: "Audio Latency", value: "64 ms" },
+          { label: "Hard GPU Sync", value: "OFF", isSwitch: true }
+        ]
+      },
+      { label: "Frame Throttle", sublabel: "Fast-forward and rewind", icon: "⏩",
+        children: [
+          { label: "Rewind", icon: "⏪", badge: "REWIND" },
+          { label: "Fast-Forward Speed", value: "0.0x (Unlimited)" },
+          { label: "Slow-Motion Speed", value: "3.0x" }
+        ]
+      },
+      { label: "User Interface", sublabel: "Menu appearance", icon: "🎨",
+        children: [
+          { label: "Menu", sublabel: "Theme and layout", icon: "📋" },
+          { label: "Menu Views", sublabel: "Toggle menu items", icon: "👁" },
+          { label: "On-Screen Notifications", icon: "💬" },
+          { label: "On-Screen Overlay", icon: "📱", badge: "OVERLAY" },
+          { label: "Show Advanced Settings", value: "OFF", isSwitch: true },
+          { label: "Navigation Wraparound", value: "ON", isSwitch: true },
+          { label: "Kiosk Mode", value: "OFF", isSwitch: true },
+          { label: "Language", value: "English" }
+        ]
+      },
+      { label: "Playlists", sublabel: "Playlist behavior", icon: "📋",
+        children: [
+          { label: "Playlist Manager", icon: "📋" },
+          { label: "History List Enable", value: "ON", isSwitch: true },
+          { label: "History List Size", value: "100" },
+          { label: "Sort Alphabetically", value: "ON", isSwitch: true },
+          { label: "Show Sublabels", value: "ON", isSwitch: true }
+        ]
+      },
+      { label: "Core", sublabel: "Core settings", icon: "⚙",
+        children: [
+          { label: "Core Manager", icon: "⚙" },
+          { label: "Core Info Cache Enable", value: "ON", isSwitch: true },
+          { label: "Allow Video Rotation", value: "ON", isSwitch: true }
+        ]
+      },
+      { label: "Saving", sublabel: "Save files and states", icon: "💾",
+        children: [
+          { label: "Auto Save State", value: "OFF", isSwitch: true },
+          { label: "Auto Load State", value: "OFF", isSwitch: true },
+          { label: "Savestate Compression", value: "ON", isSwitch: true },
+          { label: "Sort Savefiles Into Folders", value: "OFF", isSwitch: true }
+        ]
+      },
+      { label: "Recording", sublabel: "Video recording", icon: "⏺" },
+      { label: "Configuration", sublabel: "Config file options", icon: "📄",
+        children: [
+          { label: "Save Config on Exit", value: "ON", isSwitch: true },
+          { label: "Game-Specific Options", value: "ON", isSwitch: true },
+          { label: "Auto Overrides Enable", value: "ON", isSwitch: true }
+        ]
+      },
+      { label: "Accessibility", sublabel: "Accessibility features", icon: "♿" },
+      { label: "Power Management", sublabel: "Power saving", icon: "🔋" },
+      { label: "Network", sublabel: "Network and netplay", icon: "🌐", badge: "NETWORKING" },
+      { label: "Achievements", sublabel: "RetroAchievements", icon: "🏆", badge: "CHEEVOS" },
+      { label: "User", sublabel: "User identity", icon: "👤" },
+      { label: "Directory", sublabel: "File paths", icon: "📁",
+        children: [
+          { label: "System/BIOS", value: "<default>" },
+          { label: "Savefile", value: "<default>" },
+          { label: "Savestate", value: "<default>" },
+          { label: "Cores", value: "<default>" },
+          { label: "Screenshots", value: "<default>" },
+          { label: "Playlists", value: "<default>" }
+        ]
+      },
+      { label: "Logging", sublabel: "Debug logging", icon: "📜",
+        children: [
+          { label: "Log Verbosity", value: "OFF", isSwitch: true },
+          { label: "Log to File", value: "OFF", isSwitch: true }
+        ]
+      }
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// STATE & NAVIGATION
+// ═══════════════════════════════════════════════════
+
+const state = {
+  currentTab: 'main',   // 'main', 'playlists', 'settings'
+  navStack: [],         // [{label, items}]
+  selectedIndex: 0,
+  searchQuery: ""
+};
+
+function currentItems() {
+  if (state.navStack.length > 0) {
+    return state.navStack[state.navStack.length - 1].items;
+  }
+  return MENU_DATA[state.currentTab]?.items || [];
+}
+
+function filteredItems() {
+  const items = currentItems();
+  const q = state.searchQuery.toLowerCase().trim();
+  if (!q) return items;
+  return items.filter(i =>
+    i.label.toLowerCase().includes(q) ||
+    (i.sublabel && i.sublabel.toLowerCase().includes(q)) ||
+    (i.value && i.value.toLowerCase().includes(q))
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════
+
+function renderNavBar() {
+  document.querySelectorAll('.navbar-tab').forEach(tab => tab.classList.remove('active'));
+
+  if (state.currentTab === 'main') document.getElementById('navMain').classList.add('active');
+  else if (state.currentTab === 'playlists') document.getElementById('navPlaylists').classList.add('active');
+  else if (state.currentTab === 'settings') document.getElementById('navSettings').classList.add('active');
+
+  // Update back button state
+  const backBtn = document.getElementById('navBack');
+  const titleBack = document.getElementById('titlebarBack');
+  if (state.navStack.length > 0) {
+    backBtn.classList.remove('disabled');
+    titleBack.classList.remove('disabled');
+  } else {
+    backBtn.classList.add('disabled');
+    titleBack.classList.add('disabled');
+  }
+}
+
+function renderContent() {
+  const el = document.getElementById('contentList');
+  const items = filteredItems();
+
+  // Update title
+  let title = MENU_DATA[state.currentTab].label;
+  if (state.navStack.length > 0) {
+    title = state.navStack[state.navStack.length - 1].label;
+  }
+  document.getElementById('titlebarTitle').textContent = title;
+
+  if (items.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">📭</span>
+      <span>No items to display</span>
+    </div>`;
+    return;
+  }
+
+  if (state.selectedIndex >= items.length) state.selectedIndex = 0;
+
+  let html = '';
+  items.forEach((item, i) => {
+    const isSelected = i === state.selectedIndex;
+    const hasChildren = item.children && item.children.length > 0;
+
+    html += `<div class="glui-entry ${isSelected ? 'selected' : ''}"
+      onclick="selectEntry(${i})" ondblclick="activateEntry(${i})">
+      <span class="entry-icon">${item.icon || '•'}</span>
+      <div class="entry-content">
+        <div class="entry-label">${item.label}</div>
+        ${item.sublabel ? `<div class="entry-sublabel">${item.sublabel}</div>` : ''}
+      </div>
+      ${item.badge ? `<span class="entry-badge">${item.badge}</span>` : ''}
+      ${item.isSwitch ? `<div class="entry-switch ${item.value === 'ON' ? 'on' : 'off'}"></div>` :
+        (item.value ? `<span class="entry-value">${item.value}</span>` : '')}
+      ${hasChildren ? '<span class="entry-arrow">›</span>' : ''}
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function updatePrompt() {
+  const el = document.getElementById('promptBody');
+  const items = filteredItems();
+  const selected = items[state.selectedIndex];
+
+  let pathParts = [MENU_DATA[state.currentTab].label];
+  state.navStack.forEach(c => pathParts.push(c.label));
+  if (selected) pathParts.push(selected.label);
+
+  const fullPath = pathParts.join(' → ');
+  const totalItems = currentItems().length;
+
+  let html = `<p><strong>Current Path:</strong></p>
+<p><code>${fullPath}</code></p>`;
+
+  if (selected) {
+    html += `<p style="margin-top:12px"><strong>Selected:</strong> ${selected.label}</p>`;
+    if (selected.sublabel) html += `<p style="color:#666">${selected.sublabel}</p>`;
+    if (selected.value) html += `<p>Value: <code>${selected.value}</code></p>`;
+    if (selected.badge) html += `<p>Requires: <code>${selected.badge}</code></p>`;
+    if (selected.children) html += `<p style="color:var(--nav-bar-active)">→ ${selected.children.length} sub-item${selected.children.length !== 1 ? 's' : ''}</p>`;
+  }
+
+  html += `<hr style="border-color:#333;margin:16px 0">
+<p><strong>Nav Tab:</strong> ${state.currentTab.charAt(0).toUpperCase() + state.currentTab.slice(1)}</p>
+<p><strong>Depth:</strong> ${state.navStack.length}</p>
+<p><strong>Items:</strong> ${totalItems}</p>`;
+
+  html += `<hr style="border-color:#333;margin:16px 0">
+<p><strong>GLUI Layout Notes:</strong></p>
+<ul style="margin-left:16px;margin-top:8px;color:#888">
+<li>Settings is a direct nav-bar tab</li>
+<li>Full-screen list (no sidebar)</li>
+<li>Bottom navigation bar</li>
+<li>Touch-optimized entry height</li>
+</ul>`;
+
+  el.innerHTML = html;
+}
+
+function updateAll() {
+  renderNavBar();
+  renderContent();
+  updatePrompt();
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════
+
+function selectNavTab(tab) {
+  state.currentTab = tab;
+  state.navStack = [];
+  state.selectedIndex = 0;
+  state.searchQuery = '';
+  document.getElementById('globalSearch').value = '';
+  updateAll();
+}
+
+function selectEntry(i) {
+  state.selectedIndex = i;
+  renderContent();
+  updatePrompt();
+}
+
+function activateEntry(i) {
+  const items = filteredItems();
+  const item = items[i];
+  if (item && item.children && item.children.length > 0) {
+    state.navStack.push({ label: item.label, items: item.children });
+    state.selectedIndex = 0;
+    state.searchQuery = '';
+    document.getElementById('globalSearch').value = '';
+    updateAll();
+  }
+}
+
+function goBack() {
+  if (state.navStack.length > 0) {
+    state.navStack.pop();
+    state.selectedIndex = 0;
+    updateAll();
+  }
+}
+
+function collapseAll() {
+  state.navStack = [];
+  state.selectedIndex = 0;
+  state.searchQuery = '';
+  document.getElementById('globalSearch').value = '';
+  updateAll();
+}
+
+function copyPrompt() {
+  const el = document.getElementById('promptBody');
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// KEYBOARD NAV
+// ═══════════════════════════════════════════════════
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const items = filteredItems();
+
+  switch(e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      state.selectedIndex = Math.min(state.selectedIndex + 1, items.length - 1);
+      renderContent();
+      updatePrompt();
+      scrollToSelected();
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      state.selectedIndex = Math.max(state.selectedIndex - 1, 0);
+      renderContent();
+      updatePrompt();
+      scrollToSelected();
+      break;
+    case 'Enter':
+    case 'ArrowRight':
+      e.preventDefault();
+      activateEntry(state.selectedIndex);
+      break;
+    case 'Backspace':
+    case 'ArrowLeft':
+      e.preventDefault();
+      goBack();
+      break;
+    case '1':
+      selectNavTab('main');
+      break;
+    case '2':
+      selectNavTab('playlists');
+      break;
+    case '3':
+      selectNavTab('settings');
+      break;
+  }
+});
+
+function scrollToSelected() {
+  const el = document.querySelector('.glui-entry.selected');
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// Search
+document.getElementById('globalSearch').addEventListener('input', (e) => {
+  state.searchQuery = e.target.value;
+  state.selectedIndex = 0;
+  renderContent();
+  updatePrompt();
+});
+
+// Clock
+function updateClock() {
+  document.getElementById('sysbarClock').textContent =
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// Init
+updateAll();
+</script>
+</body>
+</html>

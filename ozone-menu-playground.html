@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RetroArch Ozone Menu Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #2D2D2D;
+    --sidebar-bg: #333333;
+    --sidebar-grad-dark: #2E2E2E;
+    --header-height: 56px;
+    --footer-height: 50px;
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 60px;
+    --entry-height: 46px;
+    --entry-border: #51514F;
+    --text: #FFFFFF;
+    --text-sublabel: #9F9FA1;
+    --text-value: #00FFC5;
+    --selection-fill: #212227;
+    --selection-border: #2DA3CB;
+    --cursor-0: #198AC6;
+    --cursor-1: #89F1F2;
+    --separator: rgba(255,255,255,0.15);
+  }
+
+  body {
+    background: #1a1a1a;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top toolbar */
+  .toolbar {
+    background: #1a1a1a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .toolbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    margin-right: auto;
+  }
+  .toolbar-btn {
+    background: #383838;
+    border: 1px solid #555;
+    color: #ddd;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toolbar-btn:hover { background: #4a4a4a; }
+  .toolbar-btn.active { background: var(--cursor-0); color: #fff; border-color: var(--cursor-0); }
+  .toolbar-label {
+    font-size: 11px;
+    color: #888;
+  }
+
+  /* Main sim container */
+  .sim-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Ozone frame */
+  .ozone {
+    flex: 1;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Header */
+  .ozone-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+  }
+  .ozone-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+  .header-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 12px;
+    opacity: 0.9;
+  }
+  .header-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .header-right {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-sublabel);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-battery {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .battery-icon {
+    width: 20px;
+    height: 10px;
+    border: 1.5px solid var(--text-sublabel);
+    border-radius: 2px;
+    position: relative;
+  }
+  .battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 2px;
+    width: 2px;
+    height: 4px;
+    background: var(--text-sublabel);
+    border-radius: 0 1px 1px 0;
+  }
+  .battery-fill {
+    height: 100%;
+    width: 75%;
+    background: var(--text-sublabel);
+    border-radius: 1px;
+  }
+
+  /* Body */
+  .ozone-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .ozone-sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transition: width 0.25s ease;
+  }
+  .ozone-sidebar::before,
+  .ozone-sidebar::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 20px;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .ozone-sidebar::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--sidebar-bg), var(--sidebar-grad-dark));
+  }
+  .ozone-sidebar::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--sidebar-bg), var(--sidebar-grad-dark));
+  }
+
+  .sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 0;
+    scrollbar-width: none;
+  }
+  .sidebar-scroll::-webkit-scrollbar { display: none; }
+
+  .sidebar-separator {
+    height: 1px;
+    background: var(--entry-border);
+    margin: 8px 20px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 20px;
+    cursor: pointer;
+    transition: background 0.12s;
+    position: relative;
+    gap: 12px;
+    user-select: none;
+  }
+  .sidebar-item:hover {
+    background: rgba(255,255,255,0.04);
+  }
+  .sidebar-item.active {
+    background: var(--selection-fill);
+  }
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--cursor-0);
+    border-radius: 0 2px 2px 0;
+  }
+  .sidebar-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    font-size: 16px;
+  }
+  .sidebar-item.active .sidebar-icon { opacity: 1; }
+  .sidebar-label {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-item.active .sidebar-label {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .sidebar-sublabel {
+    font-size: 11px;
+    color: var(--text-sublabel);
+    padding: 4px 20px 0 56px;
+  }
+
+  /* Content area */
+  .ozone-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    padding: 12px 28px 0;
+    font-size: 12px;
+    color: var(--text-sublabel);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 0;
+  }
+  .breadcrumb:empty { padding: 0; }
+  .breadcrumb span { cursor: pointer; }
+  .breadcrumb span:hover { color: var(--text); }
+  .breadcrumb .bc-sep { color: #666; cursor: default; }
+  .breadcrumb .bc-sep:hover { color: #666; }
+
+  .content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    scrollbar-width: thin;
+    scrollbar-color: #555 transparent;
+  }
+  .content-scroll::-webkit-scrollbar { width: 4px; }
+  .content-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+
+  .content-entry {
+    display: flex;
+    align-items: center;
+    height: var(--entry-height);
+    padding: 0 28px;
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+    gap: 12px;
+  }
+  .content-entry:hover {
+    background: rgba(255,255,255,0.03);
+  }
+  .content-entry.selected {
+    background: var(--selection-fill);
+  }
+  .content-entry.selected::before {
+    content: '';
+    position: absolute;
+    inset: 2px 8px;
+    border: 2px solid var(--selection-border);
+    border-radius: 6px;
+    pointer-events: none;
+    animation: cursorPulse 2s ease-in-out infinite;
+  }
+  @keyframes cursorPulse {
+    0%, 100% { border-color: var(--cursor-0); }
+    50% { border-color: var(--cursor-1); }
+  }
+
+  .entry-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    opacity: 0.6;
+  }
+  .content-entry.selected .entry-icon { opacity: 1; }
+
+  .entry-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .entry-label {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .entry-sublabel {
+    font-size: 11px;
+    color: var(--text-sublabel);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .entry-value {
+    font-size: 13px;
+    color: var(--text-value);
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .entry-arrow {
+    color: var(--text-sublabel);
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+
+  .entry-divider {
+    height: 1px;
+    background: var(--entry-border);
+    margin: 4px 28px;
+    opacity: 0.3;
+  }
+
+  .content-group-label {
+    padding: 16px 28px 6px;
+    font-size: 11px;
+    color: var(--cursor-0);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-sublabel);
+    font-size: 14px;
+    gap: 8px;
+  }
+  .empty-state .empty-icon { font-size: 32px; opacity: 0.4; }
+
+  /* Footer */
+  .ozone-footer {
+    height: var(--footer-height);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .ozone-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+  }
+  .footer-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-sublabel);
+  }
+  .footer-key {
+    background: #444;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    border: 1px solid #555;
+  }
+
+  /* Prompt panel */
+  .prompt-panel {
+    width: 380px;
+    background: #1e1e1e;
+    border-left: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .prompt-header {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .copy-btn {
+    background: var(--cursor-0);
+    border: none;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: #1580b5; }
+  .prompt-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #ccc;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+  }
+  .prompt-body code {
+    background: #333;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+  }
+
+  /* Info tooltip */
+  .info-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(25, 138, 198, 0.15);
+    color: var(--cursor-0);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Search */
+  .search-bar {
+    padding: 8px 28px;
+    flex-shrink: 0;
+  }
+  .search-input {
+    width: 100%;
+    background: #383838;
+    border: 1px solid #555;
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--cursor-0); }
+  .search-input::placeholder { color: #777; }
+  .search-count {
+    font-size: 11px;
+    color: var(--text-sublabel);
+    padding: 2px 28px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">RetroArch Ozone Menu Simulator</span>
+  <span class="toolbar-label">Search:</span>
+  <input type="text" id="globalSearch" class="search-input" placeholder="Filter menu items..." style="width:220px;padding:3px 10px;font-size:12px;">
+  <button class="toolbar-btn" id="btnExpand" onclick="expandAll()">Expand All</button>
+  <button class="toolbar-btn" id="btnCollapse" onclick="collapseAll()">Collapse</button>
+</div>
+
+<div class="sim-container">
+  <div class="ozone">
+    <!-- Header -->
+    <div class="ozone-header">
+      <svg class="header-icon" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <span class="header-title" id="headerTitle">Main Menu</span>
+      <div class="header-right">
+        <span id="headerClock"></span>
+        <div class="header-battery"><div class="battery-icon"><div class="battery-fill"></div></div><span>75%</span></div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="ozone-body">
+      <!-- Sidebar -->
+      <div class="ozone-sidebar">
+        <div class="sidebar-scroll" id="sidebarScroll"></div>
+      </div>
+
+      <!-- Content -->
+      <div class="ozone-content">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <div class="content-scroll" id="contentScroll"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="ozone-footer">
+      <div class="footer-hint"><span class="footer-key">A</span> OK</div>
+      <div class="footer-hint"><span class="footer-key">B</span> Back</div>
+      <div class="footer-hint"><span class="footer-key">&uarr;&darr;</span> Navigate</div>
+      <div class="footer-hint"><span class="footer-key">L/R</span> Switch Tab</div>
+      <div class="footer-hint"><span class="footer-key">Y</span> Search</div>
+    </div>
+  </div>
+
+  <!-- Prompt output -->
+  <div class="prompt-panel">
+    <div class="prompt-header">
+      <span>Menu Path Output</span>
+      <button class="copy-btn" onclick="copyPrompt()">Copy</button>
+    </div>
+    <div class="prompt-body" id="promptBody">
+      <p>Click on any menu item to see its full path and context. Navigate through the sidebar tabs and drill into sub-menus to explore the complete Ozone menu structure.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// COMPLETE RETROARCH OZONE MENU DATA
+// ═══════════════════════════════════════════════════
+
+const MENU_DATA = {
+  "Main Menu": {
+    icon: "⬡",
+    items: [
+      { label: "Quick Menu", sublabel: "Shown when content is running — access save states, shaders, cheats, and more", icon: "⏩", badge: "CORE RUNNING",
+        children: [
+          { label: "Resume Content", sublabel: "Return to the running content", icon: "▶" },
+          { label: "Restart Content", sublabel: "Reset the current content", icon: "🔄" },
+          { label: "Close Content", sublabel: "Stop running content and return to menu", icon: "⏹" },
+          { label: "Save States", sublabel: "Save state, load state, and replay management", icon: "💾",
+            children: [
+              { label: "State Slot", value: "0", sublabel: "Select which save state slot to use", icon: "🔢" },
+              { label: "Save State", sublabel: "Save state to current slot", icon: "💾" },
+              { label: "Load State", sublabel: "Load state from current slot", icon: "📂" },
+              { label: "Undo Save State", sublabel: "Revert the last save state operation", icon: "↩" },
+              { label: "Undo Load State", sublabel: "Revert the last load state operation", icon: "↩" },
+              { label: "Replay Slot", value: "0", sublabel: "Select replay slot", icon: "🔢", badge: "BSV_MOVIE" },
+              { label: "Record Replay", sublabel: "Start recording input replay", icon: "⏺", badge: "BSV_MOVIE" },
+              { label: "Play Replay", sublabel: "Play back recorded replay", icon: "▶", badge: "BSV_MOVIE" },
+              { label: "Halt Replay", sublabel: "Stop replay recording/playback", icon: "⏹", badge: "BSV_MOVIE" }
+            ]
+          },
+          { label: "Core Options", sublabel: "Configure options specific to the running core", icon: "⚙",
+            children: [
+              { label: "Core Options Override", sublabel: "Manage game/folder/core-specific option overrides", icon: "📋",
+                children: [
+                  { label: "Core Option Override Info", sublabel: "Shows which override file is active", icon: "ℹ" },
+                  { label: "Save Game Options", sublabel: "Create game-specific core options file", icon: "💾" },
+                  { label: "Save Folder Options", sublabel: "Create folder-specific core options file", icon: "💾" },
+                  { label: "Remove Game Options", sublabel: "Delete game-specific core options file", icon: "🗑" },
+                  { label: "Remove Folder Options", sublabel: "Delete folder-specific core options file", icon: "🗑" },
+                  { label: "Flush Options to Disk", sublabel: "Write current options to disk immediately", icon: "💾" },
+                  { label: "Reset Core Options", sublabel: "Reset all options to core defaults", icon: "↩" }
+                ]
+              },
+              { label: "(Core-specific options appear here)", sublabel: "Dynamic — varies per core. Categories and individual options from the core's option definitions", icon: "⚙" }
+            ]
+          },
+          { label: "Core Input Remapping", sublabel: "Remap controller inputs for the current core", icon: "🎮",
+            children: [
+              { label: "Remap File Manager", sublabel: "Load, save, and manage remap files", icon: "📄",
+                children: [
+                  { label: "Remap File Info", sublabel: "Shows the currently active remap file", icon: "ℹ" },
+                  { label: "Load Remap File", sublabel: "Load a remap file from disk", icon: "📂" },
+                  { label: "Save Remap File As", sublabel: "Save current remaps to a named file", icon: "💾" },
+                  { label: "Save Game Remap File", sublabel: "Create game-specific remap", icon: "💾" },
+                  { label: "Save Content Dir Remap File", sublabel: "Create content directory remap", icon: "💾" },
+                  { label: "Save Core Remap File", sublabel: "Create core-wide remap", icon: "💾" },
+                  { label: "Remove Game Remap File", sublabel: "Delete game-specific remap", icon: "🗑" },
+                  { label: "Remove Content Dir Remap File", sublabel: "Delete content directory remap", icon: "🗑" },
+                  { label: "Remove Core Remap File", sublabel: "Delete core remap", icon: "🗑" },
+                  { label: "Reset Input Remapping", sublabel: "Reset all remaps to defaults", icon: "↩" }
+                ]
+              },
+              { label: "Turbo Fire Settings", sublabel: "Configure turbo/autofire for this session", icon: "🔥" },
+              { label: "Port 1 Controls", sublabel: "Remap buttons for port 1", icon: "1️⃣" },
+              { label: "Port 2 Controls", sublabel: "Remap buttons for port 2", icon: "2️⃣" },
+              { label: "Port 3 Controls", sublabel: "Remap buttons for port 3", icon: "3️⃣" },
+              { label: "Port 4 Controls", sublabel: "Remap buttons for port 4", icon: "4️⃣" },
+              { label: "Port 5 Controls", sublabel: "Remap buttons for port 5", icon: "5️⃣" }
+            ]
+          },
+          { label: "Disk Control", sublabel: "Manage disc images for multi-disc games", icon: "💿",
+            children: [
+              { label: "Disk Index", value: "0", sublabel: "Select which disc to use", icon: "🔢" },
+              { label: "Eject Disc", sublabel: "Eject the current disc (toggle)", icon: "⏏" },
+              { label: "Append Disc Image", sublabel: "Add a new disc image to the tray", icon: "➕" }
+            ]
+          },
+          { label: "Take Screenshot", sublabel: "Capture a screenshot of the current frame", icon: "📷", badge: "SCREENSHOTS" },
+          { label: "Start Recording", sublabel: "Begin recording video output", icon: "⏺" },
+          { label: "Start Streaming", sublabel: "Begin live streaming", icon: "📡" },
+          { label: "Add to Favorites", sublabel: "Add running content to favorites playlist", icon: "★" },
+          { label: "Add to Playlist", sublabel: "Add running content to a specific playlist", icon: "📋" },
+          { label: "On-Screen Overlay", sublabel: "Configure touch overlay for this session", icon: "📱", badge: "OVERLAY" },
+          { label: "Latency", sublabel: "Configure latency reduction for this session", icon: "⏱",
+            children: [
+              { label: "Frame Delay Auto", value: "ON", icon: "⚙" },
+              { label: "Frame Delay", value: "0 ms", icon: "⏱" },
+              { label: "Run-Ahead Mode", value: "OFF", icon: "⚡" },
+              { label: "Run-Ahead Frames", value: "1", icon: "⚡" },
+              { label: "Audio Latency", value: "64 ms", icon: "🔊" },
+              { label: "Hard GPU Sync", value: "OFF", icon: "⚙" },
+              { label: "Hard GPU Sync Frames", value: "0", icon: "⚙" }
+            ]
+          },
+          { label: "Rewind", sublabel: "Configure rewind buffer settings", icon: "⏪", badge: "REWIND",
+            children: [
+              { label: "Rewind Support", value: "OFF", icon: "⏪" },
+              { label: "Rewind Granularity", value: "1 frame", icon: "⚙" },
+              { label: "Rewind Buffer Size", value: "128 MB", icon: "💾" },
+              { label: "Rewind Buffer Tech", value: "Full State", icon: "⚙" }
+            ]
+          },
+          { label: "Overrides", sublabel: "Manage configuration overrides for this content", icon: "📄",
+            children: [
+              { label: "Active Override File", sublabel: "Shows which override is currently loaded", icon: "ℹ" },
+              { label: "Load Override File", sublabel: "Load an override file from disk", icon: "📂" },
+              { label: "Save Override File As", sublabel: "Save current overrides to a named file", icon: "💾" },
+              { label: "Save Game Override", sublabel: "Create game-specific config override", icon: "💾" },
+              { label: "Remove Game Override", sublabel: "Delete game-specific override file", icon: "🗑" },
+              { label: "Save Content Dir Override", sublabel: "Create content directory override", icon: "💾" },
+              { label: "Remove Content Dir Override", sublabel: "Delete content directory override", icon: "🗑" },
+              { label: "Save Core Override", sublabel: "Create core-wide override", icon: "💾" },
+              { label: "Remove Core Override", sublabel: "Delete core override file", icon: "🗑" },
+              { label: "Unload Overrides", sublabel: "Unload all active overrides", icon: "↩" }
+            ]
+          },
+          { label: "Achievements", sublabel: "View unlocked achievements for current content", icon: "🏆", badge: "CHEEVOS",
+            children: [
+              { label: "(Achievement list)", sublabel: "Dynamic — shows all achievements for the loaded content with lock/unlock status", icon: "🏆" }
+            ]
+          },
+          { label: "Cheats", sublabel: "Search, load, and apply cheat codes", icon: "🔓", badge: "CHEATS",
+            children: [
+              { label: "Start or Continue Cheat Search", sublabel: "Begin a memory cheat search", icon: "🔍" },
+              { label: "Apply Cheats on Load", value: "OFF", sublabel: "Auto-apply cheats when content loads", icon: "⚙" },
+              { label: "Apply Cheat on Toggle", value: "ON", sublabel: "Immediately apply when toggling a cheat", icon: "⚙" },
+              { label: "Load Cheat File", sublabel: "Load a .cht cheat file", icon: "📂" },
+              { label: "Load Cheat File (Append)", sublabel: "Append a cheat file to existing codes", icon: "📂" },
+              { label: "Save Cheat File As", sublabel: "Save current cheats to a named file", icon: "💾" },
+              { label: "Add New Code (Top)", sublabel: "Insert a new cheat code at the top", icon: "➕" },
+              { label: "Add New Code (Bottom)", sublabel: "Insert a new cheat code at the bottom", icon: "➕" },
+              { label: "Delete All Codes", sublabel: "Remove all loaded cheat codes", icon: "🗑" },
+              { label: "Reload Cheats", sublabel: "Re-apply cheat codes from the loaded file", icon: "🔄" },
+              { label: "Apply Changes", sublabel: "Apply all cheat code changes", icon: "✅" },
+              { label: "Cheat #0 — (description)", sublabel: "Per-cheat entry with enable/disable, code, handler, memory params", icon: "🔓",
+                children: [
+                  { label: "Cheat Index", value: "0", icon: "🔢" },
+                  { label: "Enabled", value: "OFF", icon: "⚙" },
+                  { label: "Description", value: "", icon: "📝" },
+                  { label: "Handler", value: "Emulator", icon: "⚙" },
+                  { label: "Code", value: "", sublabel: "Game Genie / Action Replay / etc.", icon: "📝" },
+                  { label: "Add New After", icon: "➕" },
+                  { label: "Add New Before", icon: "➕" },
+                  { label: "Copy After", icon: "📋" },
+                  { label: "Copy Before", icon: "📋" },
+                  { label: "Delete", icon: "🗑" }
+                ]
+              }
+            ]
+          },
+          { label: "Shaders", sublabel: "Configure and manage video shader effects", icon: "🎨", badge: "CG/GLSL/SLANG/HLSL",
+            children: [
+              { label: "Video Shaders Enable", value: "ON", sublabel: "Master toggle for shader pipeline", icon: "⚙" },
+              { label: "Shader Preset Manager", sublabel: "Save, load, and manage shader presets", icon: "📄",
+                children: [
+                  { label: "Watch for Changes", value: "OFF", sublabel: "Auto-reload preset when file changes", icon: "👁" },
+                  { label: "Remember Last Shader Dir", value: "OFF", icon: "📂" },
+                  { label: "Save Reference Preset", value: "ON", sublabel: "Save as reference instead of full copy", icon: "⚙" },
+                  { label: "Current Shader Preset", sublabel: "Shows the currently loaded preset file", icon: "ℹ" },
+                  { label: "Save As", sublabel: "Save current shader config to a named file", icon: "💾" },
+                  { label: "Save Current Preset", sublabel: "Overwrite the current preset file", icon: "💾" },
+                  { label: "Save Global Preset", sublabel: "Save as the global auto-shader preset", icon: "💾" },
+                  { label: "Remove Global Preset", sublabel: "Delete the global auto-shader preset", icon: "🗑" },
+                  { label: "Save Core Preset", sublabel: "Save as auto-shader for this core", icon: "💾" },
+                  { label: "Remove Core Preset", sublabel: "Delete auto-shader for this core", icon: "🗑" },
+                  { label: "Save Parent Dir Preset", sublabel: "Save auto-shader for this content directory", icon: "💾" },
+                  { label: "Remove Parent Dir Preset", sublabel: "Delete auto-shader for content directory", icon: "🗑" },
+                  { label: "Save Game Preset", sublabel: "Save auto-shader for this specific game", icon: "💾" },
+                  { label: "Remove Game Preset", sublabel: "Delete auto-shader for this game", icon: "🗑" }
+                ]
+              },
+              { label: "Shader Parameters", sublabel: "Adjust runtime parameters exposed by the current shader", icon: "🎛",
+                children: [
+                  { label: "(Dynamic parameters)", sublabel: "Varies per shader — float sliders for each uniform the shader exposes", icon: "🎛" }
+                ]
+              },
+              { label: "Load Shader Preset", sublabel: "Browse and load a .slangp/.glslp/.cgp preset", icon: "📂" },
+              { label: "Prepend Shader Preset", sublabel: "Prepend passes from another preset", icon: "📂" },
+              { label: "Append Shader Preset", sublabel: "Append passes from another preset", icon: "📂" },
+              { label: "Apply Changes", sublabel: "Compile and apply shader changes", icon: "✅" },
+              { label: "Number of Passes", value: "0", sublabel: "Number of shader passes in the pipeline", icon: "🔢" },
+              { label: "Shader Pass #0", sublabel: "Per-pass: shader file, filter mode, scale factor", icon: "🎨",
+                children: [
+                  { label: "Shader", sublabel: "Select .slang/.glsl/.cg shader file", icon: "📂" },
+                  { label: "Filter", value: "Default", icon: "⚙" },
+                  { label: "Scale", value: "Don't Care", icon: "📐" }
+                ]
+              }
+            ]
+          },
+          { label: "Information", sublabel: "View details about running content and core", icon: "ℹ",
+            children: [
+              { label: "Core Name", sublabel: "Name and version of the loaded core", icon: "⚙" },
+              { label: "Database Entry", sublabel: "Link to database entry for this content", icon: "📊", badge: "LIBRETRODB" },
+              { label: "Database", sublabel: "Which database matched this content", icon: "📊" },
+              { label: "Content Label", sublabel: "Display name of the content", icon: "📝" },
+              { label: "Content Path", sublabel: "Full filesystem path to content file", icon: "📂" },
+              { label: "Runtime", sublabel: "Total play time for this content", icon: "⏱" },
+              { label: "Last Played", sublabel: "Date/time this content was last played", icon: "📅" },
+              { label: "Play Count", sublabel: "Number of times this content has been launched", icon: "🔢" },
+              { label: "RetroAchievements Hash", sublabel: "Content hash used for achievement matching", icon: "🏆", badge: "CHEEVOS" }
+            ]
+          }
+        ]
+      },
+      { label: "Load Core", sublabel: "Select a libretro core to load", icon: "⚙", action: "browse" },
+      { label: "Load Content", sublabel: "Select content (ROM/game) to run", icon: "📂", action: "browse",
+        children: [
+          { label: "Start Directory", sublabel: "Browse filesystem for content", icon: "📁" },
+          { label: "Downloads", sublabel: "Content downloaded via Online Updater", icon: "📥" },
+          { label: "Playlists", sublabel: "Load content from playlists", icon: "📋" },
+          { label: "File Detect and Match", sublabel: "Match file to known database entry", icon: "🔍" }
+        ]
+      },
+      { label: "Playlists", sublabel: "Playlist collection browser", icon: "📋", action: "browse",
+        children: [
+          { label: "Import Content", sublabel: "Scan directory or file", icon: "📥" },
+          { label: "Manual Scan", sublabel: "Manual content scan with custom settings", icon: "✏" },
+          { label: "Nintendo - SNES", sublabel: "25 games", icon: "🎮",
+            children: [
+              { label: "Super Mario World", sublabel: "Core: snes9x | Runtime: 2h 15m | Last Played: Apr 18, 2026", icon: "🎮",
+                children: [
+                  { label: "Run", sublabel: "Launch this content with the associated core", icon: "▶" },
+                  { label: "Rename Entry", sublabel: "Change the display name for this entry", icon: "✏" },
+                  { label: "Remove Entry", sublabel: "Remove this entry from the playlist", icon: "🗑" },
+                  { label: "Add to Favorites", sublabel: "Add this entry to the favorites playlist", icon: "★" },
+                  { label: "Add to Playlist", sublabel: "Add this entry to another playlist", icon: "📋" },
+                  { label: "Set Core Association", sublabel: "Choose which core to use for this entry", icon: "⚙" },
+                  { label: "Reset Core Association", sublabel: "Clear the core association (use DETECT)", icon: "↩" },
+                  { label: "Download Thumbnails", sublabel: "Download box art, title screen, and snap thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", sublabel: "View detailed information about this entry", icon: "ℹ",
+                    children: [
+                      { label: "Core Name", value: "snes9x", icon: "⚙" },
+                      { label: "Database", value: "Nintendo - Super Nintendo Entertainment System", icon: "📊" },
+                      { label: "Content Label", value: "Super Mario World", icon: "📝" },
+                      { label: "Content Path", value: "/roms/snes/Super Mario World.sfc", icon: "📂" },
+                      { label: "Runtime", value: "2h 15m", icon: "⏱" },
+                      { label: "Last Played", value: "Apr 18, 2026 3:42 PM", icon: "📅" },
+                      { label: "Play Count", value: "12", icon: "🔢" }
+                    ]
+                  }
+                ]
+              },
+              { label: "The Legend of Zelda: A Link to the Past", sublabel: "Core: snes9x | Runtime: 5h 30m", icon: "🎮",
+                children: [
+                  { label: "Run", sublabel: "Launch this content", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Add to Playlist", icon: "📋" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Reset Core Association", icon: "↩" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Chrono Trigger", sublabel: "Core: snes9x | Runtime: 18h 15m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Final Fantasy VI", sublabel: "Core: snes9x | Runtime: 22h 30m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Super Metroid", sublabel: "Core: snes9x | Runtime: 4h 45m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Mega Man X", sublabel: "Core: snes9x | Runtime: 3h 10m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Street Fighter II Turbo", sublabel: "Core: snes9x | Runtime: 45m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Donkey Kong Country", sublabel: "Core: snes9x", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "EarthBound", sublabel: "Core: snes9x", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Secret of Mana", sublabel: "Core: snes9x", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              }
+            ]
+          },
+          { label: "Sega - Mega Drive / Genesis", sublabel: "18 games", icon: "🎮",
+            children: [
+              { label: "Sonic the Hedgehog 2", sublabel: "Core: genesis_plus_gx | Runtime: 1h 05m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Streets of Rage 2", sublabel: "Core: genesis_plus_gx", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Gunstar Heroes", sublabel: "Core: genesis_plus_gx", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              }
+            ]
+          },
+          { label: "Sony - PlayStation", sublabel: "32 games", icon: "🎮",
+            children: [
+              { label: "Castlevania: Symphony of the Night", sublabel: "Core: beetle_psx_hw | Runtime: 8h 20m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Final Fantasy VII", sublabel: "Core: beetle_psx_hw", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Metal Gear Solid", sublabel: "Core: beetle_psx_hw", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              }
+            ]
+          },
+          { label: "Nintendo - Game Boy Advance", sublabel: "15 games", icon: "🎮",
+            children: [
+              { label: "Pokemon FireRed", sublabel: "Core: mgba | Runtime: 12h 45m", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Metroid Fusion", sublabel: "Core: mgba", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              },
+              { label: "Golden Sun", sublabel: "Core: mgba", icon: "🎮",
+                children: [
+                  { label: "Run", icon: "▶" },
+                  { label: "Rename Entry", icon: "✏" },
+                  { label: "Remove Entry", icon: "🗑" },
+                  { label: "Add to Favorites", icon: "★" },
+                  { label: "Set Core Association", icon: "⚙" },
+                  { label: "Download Thumbnails", icon: "🖼", badge: "NETWORKING" },
+                  { label: "Information", icon: "ℹ" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      { label: "Load Disc", sublabel: "Load content from inserted disc", icon: "💿", badge: "CDROM" },
+      { label: "Dump Disc", sublabel: "Dump inserted disc to image file", icon: "💿", badge: "CDROM" },
+      { label: "Online Updater", sublabel: "Download/update cores, assets, and databases", icon: "🌐",
+        children: [
+          { label: "Core Downloader", sublabel: "Download or update libretro cores", icon: "⬇" },
+          { label: "Update Installed Cores", sublabel: "Update all installed cores to latest version", icon: "🔄" },
+          { label: "Core System Files Downloader", sublabel: "Download BIOS and system files", icon: "⬇" },
+          { label: "Update Core Info Files", sublabel: "Download latest core info files", icon: "🔄" },
+          { label: "Update Assets", sublabel: "Download latest menu assets", icon: "🔄" },
+          { label: "Update Controller Profiles", sublabel: "Download latest autoconfig profiles", icon: "🎮" },
+          { label: "Update Cheats", sublabel: "Download latest cheat database", icon: "🔄" },
+          { label: "Update Databases", sublabel: "Download latest content databases", icon: "🔄" },
+          { label: "Update Overlays", sublabel: "Download latest overlay files", icon: "🔄" },
+          { label: "Update GLSL Shaders", sublabel: "Download latest GLSL shaders", icon: "🔄" },
+          { label: "Update Slang Shaders", sublabel: "Download latest Slang shaders", icon: "🔄" },
+          { label: "Update Lakka", sublabel: "Check for Lakka OS updates", icon: "🔄", badge: "Lakka" }
+        ]
+      },
+      { label: "Information", sublabel: "System and core information", icon: "ℹ",
+        children: [
+          { label: "Core Information", sublabel: "Details about the currently loaded core", icon: "⚙" },
+          { label: "System Information", sublabel: "Hardware and software details", icon: "🖥" },
+          { label: "Database Manager", sublabel: "Browse and manage content databases", icon: "📊" },
+          { label: "Disc Information", sublabel: "Information about inserted disc", icon: "💿", badge: "CDROM" },
+          { label: "Network Information", sublabel: "Network interface details", icon: "🌐", badge: "NETWORKING" }
+        ]
+      },
+      { label: "Configuration File", sublabel: "Save/load configuration", icon: "📄",
+        children: [
+          { label: "Save Current Configuration", sublabel: "Save config to retroarch.cfg", icon: "💾" },
+          { label: "Save New Configuration", sublabel: "Save config to a new file", icon: "💾" },
+          { label: "Reset to Defaults", sublabel: "Reset all settings to defaults", icon: "↩" }
+        ]
+      },
+      { label: "Restart", sublabel: "Restart RetroArch", icon: "🔄" },
+      { label: "Quit", sublabel: "Exit RetroArch", icon: "⏻" }
+    ]
+  },
+  "Settings": {
+    icon: "⚙",
+    items: [
+      { label: "Drivers", sublabel: "Control which backend drivers are used", icon: "🔧",
+        children: [
+          { label: "Menu Driver", sublabel: "Which menu interface to use", icon: "⚙", value: "ozone" },
+          { label: "Video Driver", sublabel: "Which video backend to use", icon: "🖥", value: "vulkan" },
+          { label: "Audio Driver", sublabel: "Which audio backend to use", icon: "🔊", value: "pulse" },
+          { label: "Microphone Driver", sublabel: "Which microphone backend to use", icon: "🎤", value: "wasapi" },
+          { label: "Input Driver", sublabel: "Which input backend to use", icon: "🎮", value: "udev" },
+          { label: "Joypad Driver", sublabel: "Which joypad backend to use", icon: "🕹", value: "udev" },
+          { label: "Recording Driver", sublabel: "Which recording backend to use", icon: "⏺", value: "ffmpeg" },
+          { label: "MIDI Driver", sublabel: "Which MIDI backend to use", icon: "🎵", value: "null" },
+          { label: "Bluetooth Driver", sublabel: "Which Bluetooth backend to use", icon: "📶", value: "null", badge: "BLUETOOTH" },
+          { label: "Camera Driver", sublabel: "Which camera backend to use", icon: "📷", value: "null" },
+          { label: "Location Driver", sublabel: "Which location backend to use", icon: "📍", value: "null" }
+        ]
+      },
+      { label: "Video", sublabel: "Configure video output, scaling, sync, and shaders", icon: "🖥",
+        children: [
+          { label: "Output", sublabel: "Video output and display settings", icon: "🖥",
+            children: [
+              { label: "Video Driver", value: "vulkan", icon: "⚙" },
+              { label: "Threaded Video", value: "OFF", icon: "⚙" },
+              { label: "GPU Index", value: "0", icon: "⚙" },
+              { label: "Monitor Index", value: "0", icon: "⚙" },
+              { label: "Video Rotation", value: "Normal", icon: "🔄" },
+              { label: "Screen Orientation", value: "Normal", icon: "🔄" },
+              { label: "Refresh Rate", value: "60.000 Hz", icon: "📊" },
+              { label: "Force sRGB Disable", value: "OFF", icon: "⚙" }
+            ]
+          },
+          { label: "Scaling", sublabel: "Aspect ratio and viewport settings", icon: "📐",
+            children: [
+              { label: "Integer Scale", value: "OFF", icon: "⚙" },
+              { label: "Aspect Ratio", value: "Core Provided", icon: "📐" },
+              { label: "Custom Aspect Ratio (X Position)", value: "0", icon: "📐" },
+              { label: "Custom Aspect Ratio (Y Position)", value: "0", icon: "📐" },
+              { label: "Custom Aspect Ratio (Width)", value: "0", icon: "📐" },
+              { label: "Custom Aspect Ratio (Height)", value: "0", icon: "📐" },
+              { label: "Crop Overscan", value: "ON", icon: "✂" }
+            ]
+          },
+          { label: "Synchronization", sublabel: "VSync, frame delay, and GPU sync", icon: "🔄",
+            children: [
+              { label: "VSync", value: "ON", icon: "⚙" },
+              { label: "Adaptive VSync", value: "OFF", icon: "⚙" },
+              { label: "Swap Interval", value: "1", icon: "⚙" },
+              { label: "Shader Subframes", value: "1", icon: "⚙" },
+              { label: "Black Frame Insertion", value: "OFF", icon: "⚙" },
+              { label: "Hard GPU Sync", value: "OFF", icon: "⚙" },
+              { label: "Hard GPU Sync Frames", value: "0", icon: "⚙" },
+              { label: "Max Swapchain Images", value: "3", icon: "⚙" },
+              { label: "Frame Delay Auto", value: "ON", icon: "⚙" },
+              { label: "Frame Delay", value: "0 ms", icon: "⚙" },
+              { label: "Variable Refresh Rate", value: "OFF", icon: "⚙" }
+            ]
+          },
+          { label: "Fullscreen Mode", sublabel: "Fullscreen resolution settings", icon: "⬜",
+            children: [
+              { label: "Start in Fullscreen", value: "OFF", icon: "⬜" },
+              { label: "Windowed Fullscreen", value: "ON", icon: "⬜" },
+              { label: "Fullscreen Width", value: "0 (Desktop)", icon: "⬜" },
+              { label: "Fullscreen Height", value: "0 (Desktop)", icon: "⬜" }
+            ]
+          },
+          { label: "Windowed Mode", sublabel: "Window size and decoration settings", icon: "🪟",
+            children: [
+              { label: "Save Window Position", value: "OFF", icon: "⚙" },
+              { label: "Window Scale", value: "3x", icon: "📐" },
+              { label: "Window Opacity", value: "100%", icon: "⚙" },
+              { label: "Show Window Decorations", value: "ON", icon: "⚙" }
+            ]
+          },
+          { label: "HDR", sublabel: "High dynamic range settings", icon: "☀",
+            children: [
+              { label: "HDR Enable", value: "OFF", icon: "☀" },
+              { label: "HDR Max Nits", value: "1000", icon: "☀" },
+              { label: "HDR Paper White Nits", value: "200", icon: "☀" },
+              { label: "Expand Gamut", value: "ON", icon: "🎨" }
+            ]
+          },
+          { label: "CRT SwitchRes", sublabel: "CRT monitor super resolution switching", icon: "📺",
+            children: [
+              { label: "CRT Switch Resolution", value: "OFF", icon: "📺" },
+              { label: "CRT Hi-Res Menu", value: "OFF", icon: "📺" },
+              { label: "CRT Super Resolution", value: "Native", icon: "📺" }
+            ]
+          },
+          { label: "Suspend Screensaver", value: "ON", icon: "⚙" },
+          { label: "Video Filter", sublabel: "Apply software video filter", icon: "🎨" },
+          { label: "Shader Delay", value: "0 ms", icon: "⚙" },
+          { label: "Notch Write Over", value: "OFF", icon: "⚙" }
+        ]
+      },
+      { label: "Audio", sublabel: "Configure audio output, sync, and mixing", icon: "🔊",
+        children: [
+          { label: "Output", sublabel: "Audio device and driver settings", icon: "🔊",
+            children: [
+              { label: "Audio Enable", value: "ON", icon: "🔊" },
+              { label: "Audio Driver", value: "pulse", icon: "⚙" },
+              { label: "Audio Device", value: "Default", icon: "🔊" },
+              { label: "Output Rate", value: "48000 Hz", icon: "⚙" },
+              { label: "Audio Latency", value: "64 ms", icon: "⏱" },
+              { label: "Resampler Driver", value: "sinc", icon: "⚙" },
+              { label: "Resampler Quality", value: "Normal", icon: "⚙" }
+            ]
+          },
+          { label: "Synchronization", sublabel: "Audio sync and rate control", icon: "🔄",
+            children: [
+              { label: "Audio Sync", value: "ON", icon: "🔄" },
+              { label: "Max Timing Skew", value: "0.05", icon: "⚙" },
+              { label: "Rate Control Delta", value: "0.005", icon: "⚙" }
+            ]
+          },
+          { label: "MIDI", sublabel: "MIDI input/output settings", icon: "🎵",
+            children: [
+              { label: "MIDI Output", value: "OFF", icon: "🎵" },
+              { label: "MIDI Input", value: "OFF", icon: "🎵" },
+              { label: "MIDI Volume", value: "100%", icon: "🔊" }
+            ]
+          },
+          { label: "Mixer", sublabel: "Audio mixer volume and settings", icon: "🎚", badge: "AUDIOMIXER" },
+          { label: "Menu Sounds", sublabel: "Enable/disable menu sound effects", icon: "🔔",
+            children: [
+              { label: "Enable Menu Audio", value: "OFF", icon: "🔔" },
+              { label: "OK Sound", value: "ON", icon: "🔔" },
+              { label: "Cancel Sound", value: "ON", icon: "🔔" },
+              { label: "Notice Sound", value: "ON", icon: "🔔" },
+              { label: "BGM Sound", value: "ON", icon: "🎵" },
+              { label: "Scroll Sound", value: "OFF", icon: "🔔" }
+            ]
+          },
+          { label: "Volume", value: "0.0 dB", icon: "🔊" },
+          { label: "Mixer Volume", value: "0.0 dB", icon: "🎚" },
+          { label: "Mute", value: "OFF", icon: "🔇" },
+          { label: "Rewind Audio Mute", value: "ON", icon: "🔇" },
+          { label: "Fast-Forward Mute", value: "OFF", icon: "🔇" },
+          { label: "Fast-Forward Speedup", value: "ON", icon: "⚙" },
+          { label: "DSP Plugin", sublabel: "Apply audio DSP plugin", icon: "🎛" }
+        ]
+      },
+      { label: "Input", sublabel: "Configure controllers, hotkeys, and input devices", icon: "🎮",
+        children: [
+          { label: "RetroPad Binds", sublabel: "Configure controller port bindings", icon: "🎮",
+            children: [
+              { label: "Port 1 Controls", sublabel: "Configure binds for port 1", icon: "1️⃣" },
+              { label: "Port 2 Controls", sublabel: "Configure binds for port 2", icon: "2️⃣" },
+              { label: "Port 3 Controls", sublabel: "Configure binds for port 3", icon: "3️⃣" },
+              { label: "Port 4 Controls", sublabel: "Configure binds for port 4", icon: "4️⃣" },
+              { label: "Port 5 Controls", sublabel: "Configure binds for port 5", icon: "5️⃣" }
+            ]
+          },
+          { label: "Turbo Fire", sublabel: "Configure turbo/autofire settings", icon: "🔥",
+            children: [
+              { label: "Turbo Period", value: "6 frames", icon: "⏱" },
+              { label: "Turbo Duty Cycle", value: "50%", icon: "⚙" },
+              { label: "Turbo Mode", value: "Classic", icon: "⚙" },
+              { label: "Turbo Default Button", value: "None", icon: "⚙" },
+              { label: "Allow Turbo D-Pad", value: "OFF", icon: "⚙" }
+            ]
+          },
+          { label: "Hotkey Binds", sublabel: "Configure keyboard/gamepad hotkeys", icon: "⌨",
+            children: [
+              { label: "Hotkey Enable", sublabel: "Modifier key to activate hotkeys", icon: "⌨" },
+              { label: "Menu Toggle", sublabel: "Open/close the menu", icon: "⌨" },
+              { label: "Quit", sublabel: "Exit RetroArch", icon: "⌨" },
+              { label: "Close Content", sublabel: "Close running content", icon: "⌨" },
+              { label: "Reset", sublabel: "Reset current content", icon: "⌨" },
+              { label: "Fast-Forward (Toggle)", sublabel: "Toggle fast-forward", icon: "⌨" },
+              { label: "Fast-Forward (Hold)", sublabel: "Hold for fast-forward", icon: "⌨" },
+              { label: "Rewind", sublabel: "Hold to rewind", icon: "⌨" },
+              { label: "Pause Toggle", sublabel: "Pause/resume emulation", icon: "⌨" },
+              { label: "Frame Advance", sublabel: "Advance one frame while paused", icon: "⌨" },
+              { label: "Save State", sublabel: "Save state to current slot", icon: "⌨" },
+              { label: "Load State", sublabel: "Load state from current slot", icon: "⌨" },
+              { label: "State Slot +", sublabel: "Increment save state slot", icon: "⌨" },
+              { label: "State Slot -", sublabel: "Decrement save state slot", icon: "⌨" },
+              { label: "Screenshot", sublabel: "Take a screenshot", icon: "⌨" },
+              { label: "Fullscreen Toggle", sublabel: "Toggle fullscreen mode", icon: "⌨" },
+              { label: "Volume Up", sublabel: "Increase audio volume", icon: "⌨" },
+              { label: "Volume Down", sublabel: "Decrease audio volume", icon: "⌨" },
+              { label: "Shader Next", sublabel: "Apply next shader preset", icon: "⌨" },
+              { label: "Shader Previous", sublabel: "Apply previous shader preset", icon: "⌨" },
+              { label: "Disk Eject Toggle", sublabel: "Eject/insert disc", icon: "⌨" },
+              { label: "Disk Next", sublabel: "Switch to next disc", icon: "⌨" },
+              { label: "Disk Previous", sublabel: "Switch to previous disc", icon: "⌨" },
+              { label: "Grab Mouse Toggle", sublabel: "Toggle mouse grab", icon: "⌨" },
+              { label: "Game Focus Toggle", sublabel: "Toggle game focus mode", icon: "⌨" },
+              { label: "Recording Toggle", sublabel: "Start/stop recording", icon: "⌨" },
+              { label: "Streaming Toggle", sublabel: "Start/stop streaming", icon: "⌨" },
+              { label: "AI Service", sublabel: "Toggle AI service", icon: "⌨" },
+              { label: "Netplay Host Toggle", sublabel: "Toggle netplay hosting", icon: "⌨" },
+              { label: "Netplay Ping Toggle", sublabel: "Toggle netplay ping display", icon: "⌨" }
+            ]
+          },
+          { label: "Menu Controls", sublabel: "Configure menu navigation input", icon: "📋",
+            children: [
+              { label: "Mouse Enable", value: "ON", icon: "🖱" },
+              { label: "Pointer Enable", value: "ON", icon: "👆" },
+              { label: "Swap OK/Cancel", value: "OFF", icon: "🔄" },
+              { label: "Swap Scroll Buttons", value: "OFF", icon: "🔄" },
+              { label: "Unified Menu Controls", value: "OFF", icon: "⚙" },
+              { label: "All Users Control Menu", value: "ON", icon: "👥" },
+              { label: "Disable Info Button", value: "OFF", icon: "⚙" },
+              { label: "Disable Search Button", value: "OFF", icon: "⚙" }
+            ]
+          },
+          { label: "Haptic Feedback", sublabel: "Vibration and rumble settings", icon: "📳",
+            children: [
+              { label: "Haptic Feedback Enable", value: "ON", icon: "📳" }
+            ]
+          },
+          { label: "Max Users", value: "5", icon: "👥" },
+          { label: "Autodetect Enable", value: "ON", icon: "⚙" },
+          { label: "Input Remap Binds Enable", value: "ON", icon: "⚙" },
+          { label: "Button Axis Threshold", value: "0.50", icon: "⚙" },
+          { label: "Analog Deadzone", value: "0.00", icon: "⚙" },
+          { label: "Analog Sensitivity", value: "1.00", icon: "⚙" },
+          { label: "Bind Timeout", value: "5 sec", icon: "⏱" },
+          { label: "Bind Hold", value: "2 sec", icon: "⏱" },
+          { label: "Poll Type Behavior", value: "Late", icon: "⚙" },
+          { label: "Input Driver", value: "udev", icon: "⚙" },
+          { label: "Joypad Driver", value: "udev", icon: "⚙" }
+        ]
+      },
+      { label: "Latency", sublabel: "Configure latency reduction features", icon: "⏱",
+        children: [
+          { label: "Frame Delay Auto", value: "ON", icon: "⚙" },
+          { label: "Frame Delay", value: "0 ms", icon: "⏱" },
+          { label: "Run-Ahead Mode", value: "OFF", icon: "⚡" },
+          { label: "Run-Ahead Frames", value: "1", icon: "⚡" },
+          { label: "Run-Ahead Hide Warnings", value: "OFF", icon: "⚙" },
+          { label: "Audio Latency", value: "64 ms", icon: "🔊" },
+          { label: "Max Swapchain Images", value: "3", icon: "⚙" },
+          { label: "Hard GPU Sync", value: "OFF", icon: "⚙" },
+          { label: "Hard GPU Sync Frames", value: "0", icon: "⚙" },
+          { label: "Preemptive Frames", value: "1", icon: "⚡" }
+        ]
+      },
+      { label: "Frame Throttle", sublabel: "Configure fast-forward, slow-motion, and rewind", icon: "⏩",
+        children: [
+          { label: "Rewind", sublabel: "Configure rewind buffer", icon: "⏪",
+            children: [
+              { label: "Rewind Support", value: "OFF", icon: "⏪" },
+              { label: "Rewind Granularity", value: "1 frame", icon: "⚙" },
+              { label: "Rewind Buffer Size", value: "128 MB", icon: "💾" },
+              { label: "Rewind Buffer Tech", value: "Full State", icon: "⚙" }
+            ]
+          },
+          { label: "Frame Time Counter", sublabel: "Display frame time statistics", icon: "📊",
+            children: [
+              { label: "Frame Time Counter Enable", value: "OFF", icon: "📊" }
+            ]
+          },
+          { label: "Fast-Forward Speed", value: "0.0x (Unlimited)", icon: "⏩" },
+          { label: "Fast-Forward Frame Skip", value: "OFF", icon: "⚙" },
+          { label: "Fast-Forward Mute Audio", value: "OFF", icon: "🔇" },
+          { label: "Slow-Motion Speed", value: "3.0x", icon: "🐢" },
+          { label: "Variable Refresh Rate", value: "OFF", icon: "⚙" }
+        ]
+      },
+      { label: "User Interface", sublabel: "Configure menu appearance, views, and notifications", icon: "🎨",
+        children: [
+          { label: "Menu", sublabel: "Menu driver-specific settings", icon: "📋",
+            children: [
+              { label: "Color Theme", value: "Basic Black", icon: "🎨" },
+              { label: "Use Preferred System Color Theme", value: "ON", icon: "🎨" },
+              { label: "Show Sidebar", value: "ON", icon: "📋" },
+              { label: "Truncate Playlist Names", value: "ON", icon: "✂" },
+              { label: "Thumbnail Scaling", value: "Centered", icon: "🖼" },
+              { label: "Show Thumbnail Bar", value: "ON", icon: "🖼" }
+            ]
+          },
+          { label: "Menu Views", sublabel: "Toggle visibility of menu items", icon: "👁",
+            children: [
+              { label: "Show Load Core", value: "ON", icon: "👁" },
+              { label: "Show Load Content", value: "ON", icon: "👁" },
+              { label: "Show Load Disc", value: "ON", icon: "👁" },
+              { label: "Show Dump Disc", value: "ON", icon: "👁" },
+              { label: "Show History", value: "ON", icon: "👁" },
+              { label: "Show Favorites", value: "ON", icon: "👁" },
+              { label: "Show Images", value: "ON", icon: "👁" },
+              { label: "Show Music", value: "ON", icon: "👁" },
+              { label: "Show Video", value: "ON", icon: "👁" },
+              { label: "Show Netplay", value: "OFF", icon: "👁" },
+              { label: "Show Online Updater", value: "ON", icon: "👁" },
+              { label: "Show Information", value: "ON", icon: "👁" },
+              { label: "Show Configuration File", value: "ON", icon: "👁" },
+              { label: "Show Restart", value: "ON", icon: "👁" },
+              { label: "Show Quit", value: "ON", icon: "👁" },
+              { label: "Show Contentless Cores", value: "ON", icon: "👁" },
+              { label: "Show Explore", value: "ON", icon: "👁" }
+            ]
+          },
+          { label: "On-Screen Notifications", sublabel: "Notification and OSD settings", icon: "💬",
+            children: [
+              { label: "Notification Visibility", sublabel: "Per-notification type visibility", icon: "👁" },
+              { label: "On-Screen Display", sublabel: "FPS counter, memory, statistics", icon: "📊",
+                children: [
+                  { label: "Show Framerate", value: "OFF", icon: "📊" },
+                  { label: "Show Frame Count", value: "OFF", icon: "📊" },
+                  { label: "Show Memory Usage", value: "OFF", icon: "📊" },
+                  { label: "Show Statistics", value: "OFF", icon: "📊" },
+                  { label: "OSD Font Size", value: "32", icon: "⚙" },
+                  { label: "OSD Background Opacity", value: "50%", icon: "⚙" }
+                ]
+              },
+              { label: "Notification Enable", value: "ON", icon: "💬" },
+              { label: "Notification Size", value: "32", icon: "⚙" },
+              { label: "Notification Position", value: "Bottom-Left", icon: "📐" }
+            ]
+          },
+          { label: "On-Screen Overlay", sublabel: "Touch overlay settings", icon: "📱", badge: "OVERLAY" },
+          { label: "Show Advanced Settings", value: "OFF", icon: "⚙" },
+          { label: "Pause When Inactive", value: "OFF", icon: "⏸" },
+          { label: "Pause When Window Not Active", value: "OFF", icon: "⏸" },
+          { label: "Pause On Controller Disconnect", value: "OFF", icon: "🎮" },
+          { label: "Navigation Wraparound", value: "ON", icon: "🔄" },
+          { label: "Remember Menu Selection", value: "Always", icon: "💾" },
+          { label: "Threaded Data Runloop", value: "ON", icon: "⚙" },
+          { label: "Kiosk Mode", value: "OFF", icon: "🔒" },
+          { label: "Language", value: "English", icon: "🌐" }
+        ]
+      },
+      { label: "Playlists", sublabel: "Configure playlist behavior and display", icon: "📋",
+        children: [
+          { label: "Playlist Manager", sublabel: "Manage individual playlist settings", icon: "📋" },
+          { label: "Network On-Demand Thumbnails", value: "OFF", icon: "🖼", badge: "NETWORKING" },
+          { label: "History List Enable", value: "ON", icon: "📜" },
+          { label: "History List Size", value: "100", icon: "⚙" },
+          { label: "Favorites Size", value: "-1 (Unlimited)", icon: "⚙" },
+          { label: "Truncate Playlist Name", value: "ON", icon: "✂" },
+          { label: "Sort Alphabetically", value: "ON", icon: "🔤" },
+          { label: "Portable Paths", value: "OFF", icon: "📂" },
+          { label: "Entry Rename", value: "ON", icon: "✏" },
+          { label: "Entry Remove", value: "All Playlists", icon: "🗑" },
+          { label: "Show Inline Core Name", value: "Default", icon: "⚙" },
+          { label: "Show History Icons", value: "Default", icon: "⚙" },
+          { label: "Show Entry Index", value: "OFF", icon: "🔢" },
+          { label: "Show Sublabels", value: "ON", icon: "📝" },
+          { label: "Fuzzy Archive Match", value: "OFF", icon: "🔍" },
+          { label: "Scan Without Core Match", value: "OFF", icon: "🔍" },
+          { label: "Content Runtime Log", value: "OFF", icon: "⏱" },
+          { label: "Use Old Playlist Format", value: "OFF", icon: "⚙" },
+          { label: "Playlist Compression", value: "OFF", icon: "📦" }
+        ]
+      },
+      { label: "Core", sublabel: "Configure core behavior and management", icon: "⚙",
+        children: [
+          { label: "Core Manager", sublabel: "Manage installed cores", icon: "⚙" },
+          { label: "Updater Settings", sublabel: "Configure core update behavior", icon: "🔄", badge: "ONLINE_UPDATER" },
+          { label: "Core Info Cache Enable", value: "ON", icon: "💾" },
+          { label: "Core Info Savestate Bypass", value: "OFF", icon: "⚙" },
+          { label: "System Files in Content Dir", value: "OFF", icon: "📂" },
+          { label: "Core Option Category Enable", value: "ON", icon: "📋" },
+          { label: "Driver Switch Enable", value: "ON", icon: "🔄" },
+          { label: "Allow Video Rotation", value: "ON", icon: "🔄" },
+          { label: "Shared Hardware Context", value: "OFF", icon: "⚙" },
+          { label: "Dummy On Core Shutdown", value: "ON", icon: "⚙" }
+        ]
+      },
+      { label: "Saving", sublabel: "Configure save files, save states, and auto-save", icon: "💾",
+        children: [
+          { label: "Cloud Sync", sublabel: "Cloud synchronization settings", icon: "☁", badge: "CLOUDSYNC",
+            children: [
+              { label: "Cloud Sync Enable", value: "OFF", icon: "☁" },
+              { label: "Cloud Sync Provider", value: "None", icon: "☁" },
+              { label: "Cloud Sync URL", value: "", icon: "🌐" }
+            ]
+          },
+          { label: "Sort Savefiles Into Folders", value: "OFF", icon: "📂" },
+          { label: "Sort Savefiles By Content", value: "OFF", icon: "📂" },
+          { label: "Savefiles in Content Dir", value: "OFF", icon: "📂" },
+          { label: "Autosave Interval", value: "0 sec (OFF)", icon: "⏱" },
+          { label: "Block SRAM Overwrite", value: "OFF", icon: "🔒" },
+          { label: "Save File Compression", value: "ON", icon: "📦" },
+          { label: "Sort Savestates Into Folders", value: "OFF", icon: "📂" },
+          { label: "Sort Savestates By Content", value: "OFF", icon: "📂" },
+          { label: "Savestates in Content Dir", value: "OFF", icon: "📂" },
+          { label: "Auto Save State", value: "OFF", icon: "💾" },
+          { label: "Auto Load State", value: "OFF", icon: "📂" },
+          { label: "Savestate Thumbnail Enable", value: "ON", icon: "🖼" },
+          { label: "Savestate Compression", value: "ON", icon: "📦" },
+          { label: "Savestate Auto Index", value: "OFF", icon: "🔢" },
+          { label: "Savestate Max Keep", value: "0 (All)", icon: "⚙" },
+          { label: "Replay Auto Index", value: "OFF", icon: "🔢" },
+          { label: "Replay Max Keep", value: "0 (All)", icon: "⚙" },
+          { label: "Sort Screenshots By Content", value: "OFF", icon: "📂" },
+          { label: "Screenshots in Content Dir", value: "OFF", icon: "📂" },
+          { label: "GPU Screenshot", value: "ON", icon: "🖥" },
+          { label: "Content Runtime Log", value: "OFF", icon: "⏱" }
+        ]
+      },
+      { label: "Recording", sublabel: "Configure video recording and streaming", icon: "⏺",
+        children: [
+          { label: "Recording Quality", value: "Lossless", icon: "📊" },
+          { label: "Recording Config", sublabel: "Custom FFmpeg config file", icon: "📄" },
+          { label: "Recording Threads", value: "2", icon: "⚙" },
+          { label: "Post-Filter Recording", value: "OFF", icon: "🎨" },
+          { label: "GPU Recording", value: "OFF", icon: "🖥" },
+          { label: "Streaming Mode", value: "Custom", icon: "📡" },
+          { label: "Streaming Quality", value: "Custom", icon: "📊" },
+          { label: "Stream Config", sublabel: "Custom FFmpeg stream config", icon: "📄" },
+          { label: "Streaming Title", value: "", icon: "📝" },
+          { label: "Streaming URL", value: "", icon: "🌐" }
+        ]
+      },
+      { label: "Configuration", sublabel: "Configure how settings are saved and loaded", icon: "📄",
+        children: [
+          { label: "Save Config on Exit", value: "ON", icon: "💾" },
+          { label: "Save Remap on Exit", value: "OFF", icon: "💾" },
+          { label: "Game-Specific Options", value: "ON", icon: "⚙" },
+          { label: "Auto Overrides Enable", value: "ON", icon: "⚙" },
+          { label: "Auto Remaps Enable", value: "ON", icon: "🎮" },
+          { label: "Initial Disk Change Enable", value: "OFF", icon: "💿" },
+          { label: "Global Core Options", value: "OFF", icon: "🌐" }
+        ]
+      },
+      { label: "Accessibility", sublabel: "Configure accessibility and AI services", icon: "♿",
+        children: [
+          { label: "Accessibility Enable", value: "OFF", icon: "♿" },
+          { label: "Narrator Speech Speed", value: "5", icon: "🗣" },
+          { label: "AI Service", sublabel: "Real-time translation and narration", icon: "🤖",
+            children: [
+              { label: "AI Service Enable", value: "OFF", icon: "🤖" },
+              { label: "AI Service Mode", value: "Image Mode", icon: "⚙" },
+              { label: "AI Service URL", value: "", icon: "🌐" },
+              { label: "AI Service Pause", value: "ON", icon: "⏸" },
+              { label: "Source Language", value: "Auto", icon: "🌐" },
+              { label: "Target Language", value: "English", icon: "🌐" }
+            ]
+          }
+        ]
+      },
+      { label: "Power Management", sublabel: "Configure power saving features", icon: "🔋",
+        children: [
+          { label: "Fast-Forward Frame Skip", value: "OFF", icon: "⏩" },
+          { label: "Sustained Performance Mode", value: "OFF", icon: "🔋" },
+          { label: "CPU Performance Power", sublabel: "Adjust CPU governor settings", icon: "⚡" }
+        ]
+      },
+      { label: "Network", sublabel: "Configure network and netplay settings", icon: "🌐", badge: "NETWORKING",
+        children: [
+          { label: "Netplay Public Announce", value: "ON", icon: "📢" },
+          { label: "Use MITM Server", value: "OFF", icon: "🔀" },
+          { label: "Netplay IP Address", value: "", icon: "🌐" },
+          { label: "Netplay TCP/UDP Port", value: "55435", icon: "⚙" },
+          { label: "Max Connections", value: "0 (Unlimited)", icon: "👥" },
+          { label: "Max Ping", value: "0 (Unlimited)", icon: "📊" },
+          { label: "Netplay Password", value: "", icon: "🔒" },
+          { label: "Spectate Password", value: "", icon: "🔒" },
+          { label: "Start as Spectator", value: "OFF", icon: "👁" },
+          { label: "Chat Fade", value: "ON", icon: "💬" },
+          { label: "Allow Pausing", value: "ON", icon: "⏸" },
+          { label: "Allow Slaves", value: "OFF", icon: "⚙" },
+          { label: "Input Latency Frames (Min)", value: "0", icon: "⏱" },
+          { label: "Input Latency Frames (Range)", value: "0", icon: "⏱" },
+          { label: "NAT Traversal", value: "ON", icon: "🔀" },
+          { label: "Network CMD Enable", value: "OFF", icon: "⚙" },
+          { label: "Network CMD Port", value: "55355", icon: "⚙" }
+        ]
+      },
+      { label: "Achievements", sublabel: "Configure RetroAchievements integration", icon: "🏆", badge: "CHEEVOS",
+        children: [
+          { label: "Achievements Enable", value: "OFF", icon: "🏆" },
+          { label: "Username", value: "", icon: "👤" },
+          { label: "Password", value: "", icon: "🔒" },
+          { label: "Appearance Settings", sublabel: "Achievement notification styling", icon: "🎨" },
+          { label: "Visibility Settings", sublabel: "Control which achievements are shown", icon: "👁" },
+          { label: "Hardcore Mode", value: "OFF", icon: "💪" },
+          { label: "Leaderboards", value: "OFF", icon: "📊" },
+          { label: "Rich Presence", value: "OFF", icon: "📡" },
+          { label: "Badges", value: "OFF", icon: "🏅" },
+          { label: "Test Unofficial", value: "OFF", icon: "🧪" },
+          { label: "Unlock Sound", value: "OFF", icon: "🔔" },
+          { label: "Auto Screenshot", value: "OFF", icon: "📷" },
+          { label: "Start Active", value: "OFF", icon: "⚙" }
+        ]
+      },
+      { label: "User", sublabel: "Configure user identity and privacy", icon: "👤",
+        children: [
+          { label: "Privacy", sublabel: "Privacy and telemetry settings", icon: "🔒",
+            children: [
+              { label: "Camera", value: "OFF", icon: "📷" },
+              { label: "Location", value: "OFF", icon: "📍" },
+              { label: "Microphone", value: "OFF", icon: "🎤" }
+            ]
+          },
+          { label: "Accounts", sublabel: "Online service accounts", icon: "👥",
+            children: [
+              { label: "RetroAchievements", sublabel: "Login to RetroAchievements", icon: "🏆" },
+              { label: "YouTube", sublabel: "YouTube streaming account", icon: "📺" },
+              { label: "Twitch", sublabel: "Twitch streaming account", icon: "📺" },
+              { label: "Facebook Gaming", sublabel: "Facebook Gaming streaming", icon: "📺" }
+            ]
+          },
+          { label: "Netplay Nickname", value: "", icon: "📝" }
+        ]
+      },
+      { label: "Directory", sublabel: "Configure file system paths", icon: "📁",
+        children: [
+          { label: "File Browser", value: "<default>", icon: "📂" },
+          { label: "Cache", value: "<default>", icon: "📂" },
+          { label: "System/BIOS", value: "<default>", icon: "📂" },
+          { label: "Savefile", value: "<default>", icon: "💾" },
+          { label: "Savestate", value: "<default>", icon: "💾" },
+          { label: "Cores", value: "<default>", icon: "⚙" },
+          { label: "Core Info", value: "<default>", icon: "ℹ" },
+          { label: "Config", value: "<default>", icon: "📄" },
+          { label: "Core Assets", value: "<default>", icon: "📦" },
+          { label: "Assets", value: "<default>", icon: "📦" },
+          { label: "Thumbnails", value: "<default>", icon: "🖼" },
+          { label: "Dynamic Wallpapers", value: "<default>", icon: "🖼" },
+          { label: "Cheat Database", value: "<default>", icon: "📂" },
+          { label: "Database", value: "<default>", icon: "📊" },
+          { label: "Video Filter", value: "<default>", icon: "🎨" },
+          { label: "Audio Filter", value: "<default>", icon: "🎛" },
+          { label: "Video Shader", value: "<default>", icon: "🎨" },
+          { label: "Recording Output", value: "<default>", icon: "⏺" },
+          { label: "Recording Config", value: "<default>", icon: "📄" },
+          { label: "Overlay", value: "<default>", icon: "📱" },
+          { label: "Screenshots", value: "<default>", icon: "📷" },
+          { label: "Joypad Autoconfig", value: "<default>", icon: "🎮" },
+          { label: "Input Remapping", value: "<default>", icon: "🎮" },
+          { label: "Playlists", value: "<default>", icon: "📋" },
+          { label: "Runtime Log", value: "<default>", icon: "📜" },
+          { label: "Log", value: "<default>", icon: "📜" }
+        ]
+      },
+      { label: "Logging", sublabel: "Configure debug logging", icon: "📜",
+        children: [
+          { label: "Log Verbosity", value: "OFF", icon: "📜" },
+          { label: "Frontend Log Level", value: "1 - INFO", icon: "⚙" },
+          { label: "Core (libretro) Log Level", value: "0 - DEBUG", icon: "⚙" },
+          { label: "Log to File", value: "OFF", icon: "📄" },
+          { label: "Timestamp Logs", value: "OFF", icon: "⏱" },
+          { label: "Performance Counters", value: "OFF", icon: "📊" }
+        ]
+      }
+    ]
+  },
+  "History": {
+    icon: "📜",
+    emptyMessage: "No history entries. Play some content to build your history.",
+    items: [
+      { label: "Super Mario World", sublabel: "Core: snes9x | Runtime: 2h 15m | Last Played: Today 3:42 PM", icon: "🎮",
+        children: [
+          { label: "Run", sublabel: "Launch this content", icon: "▶" },
+          { label: "Rename Entry", sublabel: "Change the display name", icon: "✏" },
+          { label: "Remove Entry", sublabel: "Remove from history", icon: "🗑" },
+          { label: "Add to Favorites", sublabel: "Add to favorites playlist", icon: "★" },
+          { label: "Add to Playlist", sublabel: "Add to another playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Reset Core Association", icon: "↩" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "The Legend of Zelda: A Link to the Past", sublabel: "Core: snes9x | Runtime: 5h 30m | Last Played: Yesterday", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Sonic the Hedgehog 2", sublabel: "Core: genesis_plus_gx | Runtime: 1h 05m | Last Played: Apr 16", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Castlevania: Symphony of the Night", sublabel: "Core: beetle_psx_hw | Runtime: 8h 20m | Last Played: Apr 15", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Pokemon FireRed", sublabel: "Core: mgba | Runtime: 12h 45m | Last Played: Apr 14", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Mega Man X", sublabel: "Core: snes9x | Runtime: 3h 10m | Last Played: Apr 12", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Street Fighter II Turbo", sublabel: "Core: snes9x | Runtime: 45m | Last Played: Apr 10", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Final Fantasy VI", sublabel: "Core: snes9x | Runtime: 22h 30m | Last Played: Apr 8", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Chrono Trigger", sublabel: "Core: snes9x | Runtime: 18h 15m | Last Played: Apr 5", icon: "🎮",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Favorites", icon: "★" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      }
+    ]
+  },
+  "Favorites": {
+    icon: "★",
+    emptyMessage: "No favorites yet. Add content to favorites from the Quick Menu.",
+    items: [
+      { label: "Super Mario World", sublabel: "Core: snes9x | Runtime: 2h 15m | Last Played: Apr 18, 2026", icon: "★",
+        children: [
+          { label: "Run", sublabel: "Launch this content", icon: "▶" },
+          { label: "Rename Entry", sublabel: "Change the display name", icon: "✏" },
+          { label: "Remove Entry", sublabel: "Remove from favorites", icon: "🗑" },
+          { label: "Add to Playlist", sublabel: "Add to another playlist", icon: "📋" },
+          { label: "Set Core Association", sublabel: "Choose which core to use", icon: "⚙" },
+          { label: "Reset Core Association", sublabel: "Clear core association", icon: "↩" },
+          { label: "Information", sublabel: "View content details", icon: "ℹ" }
+        ]
+      },
+      { label: "Chrono Trigger", sublabel: "Core: snes9x | Runtime: 18h 15m", icon: "★",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Reset Core Association", icon: "↩" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Castlevania: Symphony of the Night", sublabel: "Core: beetle_psx_hw | Runtime: 8h 20m", icon: "★",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Reset Core Association", icon: "↩" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      },
+      { label: "Pokemon FireRed", sublabel: "Core: mgba | Runtime: 12h 45m", icon: "★",
+        children: [
+          { label: "Run", icon: "▶" },
+          { label: "Rename Entry", icon: "✏" },
+          { label: "Remove Entry", icon: "🗑" },
+          { label: "Add to Playlist", icon: "📋" },
+          { label: "Set Core Association", icon: "⚙" },
+          { label: "Reset Core Association", icon: "↩" },
+          { label: "Information", icon: "ℹ" }
+        ]
+      }
+    ]
+  },
+  "Images": {
+    icon: "🖼",
+    emptyMessage: "No image content found.",
+    items: [],
+    badge: "IMAGEVIEWER"
+  },
+  "Music": {
+    icon: "🎵",
+    emptyMessage: "No music content found.",
+    items: []
+  },
+  "Videos": {
+    icon: "📹",
+    emptyMessage: "No video content found.",
+    items: [],
+    badge: "FFMPEG/MPV"
+  },
+  "Netplay": {
+    icon: "🌐",
+    badge: "NETWORKING",
+    items: [
+      { label: "Host", sublabel: "Start a netplay session as host", icon: "📡" },
+      { label: "Connect", sublabel: "Join a netplay session", icon: "🔗" },
+      { label: "Refresh Rooms", sublabel: "Refresh the room list", icon: "🔄" },
+      { label: "LAN Scan", sublabel: "Scan local network for hosts", icon: "📡" }
+    ]
+  },
+  "Import Content": {
+    icon: "➕",
+    items: [
+      { label: "Scan Directory", sublabel: "Scan a directory for content", icon: "📂" },
+      { label: "Scan File", sublabel: "Scan a single file", icon: "📄" },
+      { label: "Manual Scan", sublabel: "Manual content import with custom settings", icon: "✏",
+        children: [
+          { label: "Content Directory", value: "<default>", icon: "📂" },
+          { label: "System Name", value: "<detect>", icon: "⚙" },
+          { label: "Default Core", value: "<detect>", icon: "⚙" },
+          { label: "File Extensions", value: "<core default>", icon: "📄" },
+          { label: "Scan Inside Archives", value: "OFF", icon: "📦" },
+          { label: "Overwrite Playlist", value: "OFF", icon: "⚠" },
+          { label: "Start Scan", sublabel: "Begin manual scan with above settings", icon: "▶" }
+        ]
+      }
+    ]
+  },
+  "Contentless Cores": {
+    icon: "🧩",
+    emptyMessage: "No contentless cores installed. Some cores (like game engines) can run without loading separate content.",
+    items: [
+      { label: "2048", sublabel: "Puzzle game — no content needed", icon: "🧩" },
+      { label: "Craft", sublabel: "Minecraft clone — no content needed", icon: "🧩" },
+      { label: "Game of Life", sublabel: "Conway's Game of Life — no content needed", icon: "🧩" },
+      { label: "PocketCDG", sublabel: "CD+G Karaoke player", icon: "🧩" },
+      { label: "Remote RetroPad", sublabel: "Virtual RetroPad for netplay", icon: "🧩" }
+    ]
+  },
+  "Explore": {
+    icon: "🔍",
+    badge: "LIBRETRODB",
+    emptyMessage: "Explore lets you browse your game database with advanced filtering. Requires content databases to be installed.",
+    items: [
+      { label: "Search", sublabel: "Search by name across all databases", icon: "🔍" },
+      { label: "By System", sublabel: "Browse content grouped by platform", icon: "🖥" },
+      { label: "By Genre", sublabel: "Browse content grouped by genre", icon: "🏷" },
+      { label: "By Origin", sublabel: "Browse content grouped by region/origin", icon: "🌍" },
+      { label: "By Publisher", sublabel: "Browse content grouped by publisher", icon: "🏢" },
+      { label: "By Developer", sublabel: "Browse content grouped by developer", icon: "👥" },
+      { label: "By Year", sublabel: "Browse content grouped by release year", icon: "📅" }
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// STATE & NAVIGATION
+// ═══════════════════════════════════════════════════
+
+const state = {
+  activeTab: "Main Menu",
+  navStack: [],        // breadcrumb: [{label, items}]
+  selectedIndex: 0,
+  searchQuery: ""
+};
+
+function currentItems() {
+  if (state.navStack.length > 0) {
+    return state.navStack[state.navStack.length - 1].items;
+  }
+  return MENU_DATA[state.activeTab]?.items || [];
+}
+
+function filteredItems() {
+  const items = currentItems();
+  const q = state.searchQuery.toLowerCase().trim();
+  if (!q) return items;
+  return items.filter(i =>
+    i.label.toLowerCase().includes(q) ||
+    (i.sublabel && i.sublabel.toLowerCase().includes(q)) ||
+    (i.value && i.value.toLowerCase().includes(q))
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════
+
+function renderSidebar() {
+  const el = document.getElementById('sidebarScroll');
+  const tabs = Object.keys(MENU_DATA);
+  let html = '';
+
+  // System tabs (Main Menu, Settings)
+  tabs.slice(0, 2).forEach(tab => {
+    const d = MENU_DATA[tab];
+    html += `<div class="sidebar-item ${state.activeTab === tab ? 'active' : ''}" onclick="selectTab('${tab}')">
+      <span class="sidebar-icon">${d.icon}</span>
+      <span class="sidebar-label">${tab}</span>
+      ${d.badge ? `<span class="info-badge">${d.badge}</span>` : ''}
+    </div>`;
+  });
+
+  html += '<div class="sidebar-separator"></div>';
+
+  // Content tabs
+  tabs.slice(2).forEach(tab => {
+    const d = MENU_DATA[tab];
+    html += `<div class="sidebar-item ${state.activeTab === tab ? 'active' : ''}" onclick="selectTab('${tab}')">
+      <span class="sidebar-icon">${d.icon}</span>
+      <span class="sidebar-label">${tab}</span>
+      ${d.badge ? `<span class="info-badge">${d.badge}</span>` : ''}
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function renderBreadcrumb() {
+  const el = document.getElementById('breadcrumb');
+  if (state.navStack.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  let html = `<span onclick="navigateToRoot()">${state.activeTab}</span>`;
+  state.navStack.forEach((crumb, i) => {
+    html += `<span class="bc-sep">›</span>`;
+    if (i < state.navStack.length - 1) {
+      html += `<span onclick="navigateTo(${i})">${crumb.label}</span>`;
+    } else {
+      html += `<span style="color:var(--text)">${crumb.label}</span>`;
+    }
+  });
+  el.innerHTML = html;
+}
+
+function renderContent() {
+  const el = document.getElementById('contentScroll');
+  const items = filteredItems();
+  const tabData = MENU_DATA[state.activeTab];
+
+  // Update header title
+  const title = state.navStack.length > 0
+    ? state.navStack[state.navStack.length - 1].label
+    : state.activeTab;
+  document.getElementById('headerTitle').textContent = title;
+
+  if (items.length === 0) {
+    const msg = tabData?.emptyMessage || "No items to display.";
+    el.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">${tabData?.icon || "📭"}</span>
+      <span>${msg}</span>
+    </div>`;
+    return;
+  }
+
+  if (state.selectedIndex >= items.length) state.selectedIndex = 0;
+
+  let html = '';
+  items.forEach((item, i) => {
+    const isSelected = i === state.selectedIndex;
+    const hasChildren = item.children && item.children.length > 0;
+
+    html += `<div class="content-entry ${isSelected ? 'selected' : ''}"
+      onclick="selectEntry(${i})" ondblclick="activateEntry(${i})">
+      <span class="entry-icon">${item.icon || '•'}</span>
+      <div class="entry-text">
+        <div class="entry-label">${item.label}</div>
+        ${item.sublabel ? `<div class="entry-sublabel">${item.sublabel}</div>` : ''}
+      </div>
+      ${item.badge ? `<span class="info-badge">${item.badge}</span>` : ''}
+      ${item.value ? `<span class="entry-value">${item.value}</span>` : ''}
+      ${hasChildren ? '<span class="entry-arrow">▸</span>' : ''}
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function updatePrompt() {
+  const el = document.getElementById('promptBody');
+  const items = filteredItems();
+  const selected = items[state.selectedIndex];
+
+  let pathParts = [state.activeTab];
+  state.navStack.forEach(c => pathParts.push(c.label));
+  if (selected) pathParts.push(selected.label);
+
+  const fullPath = pathParts.join(' → ');
+  const tabData = MENU_DATA[state.activeTab];
+  const totalItems = currentItems().length;
+
+  let html = `<p><strong>Current Path:</strong></p>
+<p><code>${fullPath}</code></p>`;
+
+  if (selected) {
+    html += `<p style="margin-top:12px"><strong>Selected Item:</strong> ${selected.label}</p>`;
+    if (selected.sublabel) html += `<p style="color:var(--text-sublabel)">${selected.sublabel}</p>`;
+    if (selected.value) html += `<p>Current value: <code>${selected.value}</code></p>`;
+    if (selected.badge) html += `<p>Requires: <code>${selected.badge}</code> compile flag</p>`;
+    if (selected.children) html += `<p style="color:var(--text-value)">→ Has ${selected.children.length} sub-item${selected.children.length !== 1 ? 's' : ''} (double-click to enter)</p>`;
+  }
+
+  html += `<hr style="border-color:#444;margin:16px 0">
+<p><strong>Tab:</strong> ${state.activeTab} ${tabData?.badge ? `(${tabData.badge})` : ''}</p>
+<p><strong>Depth:</strong> ${state.navStack.length} level${state.navStack.length !== 1 ? 's' : ''} deep</p>
+<p><strong>Items at this level:</strong> ${totalItems}</p>`;
+
+  if (state.searchQuery) {
+    html += `<p><strong>Filter:</strong> "${state.searchQuery}" (${items.length} match${items.length !== 1 ? 'es' : ''})</p>`;
+  }
+
+  // Generate prompt text
+  html += `<hr style="border-color:#444;margin:16px 0">
+<p><strong>Prompt:</strong></p>
+<p style="background:#282828;padding:12px;border-radius:6px;line-height:1.6">`;
+
+  if (selected && selected.children) {
+    html += `In RetroArch's Ozone menu, navigate to <code>${fullPath}</code>. This sub-menu contains ${selected.children.length} option${selected.children.length !== 1 ? 's' : ''}: ${selected.children.slice(0,5).map(c => c.label).join(', ')}${selected.children.length > 5 ? ', ...' : ''}.`;
+  } else if (selected && selected.value) {
+    html += `In RetroArch's Ozone menu at <code>${pathParts.slice(0,-1).join(' → ')}</code>, the setting "${selected.label}" is currently set to <code>${selected.value}</code>.`;
+  } else if (selected) {
+    html += `In RetroArch's Ozone menu, select <code>${fullPath}</code>.`;
+  } else {
+    html += `In RetroArch's Ozone menu, the "${state.activeTab}" tab contains ${totalItems} item${totalItems !== 1 ? 's' : ''}.`;
+  }
+  html += '</p>';
+
+  el.innerHTML = html;
+}
+
+function updateAll() {
+  renderSidebar();
+  renderBreadcrumb();
+  renderContent();
+  updatePrompt();
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════
+
+function selectTab(tab) {
+  state.activeTab = tab;
+  state.navStack = [];
+  state.selectedIndex = 0;
+  state.searchQuery = '';
+  document.getElementById('globalSearch').value = '';
+  updateAll();
+}
+
+function selectEntry(i) {
+  state.selectedIndex = i;
+  renderContent();
+  updatePrompt();
+}
+
+function activateEntry(i) {
+  const items = filteredItems();
+  const item = items[i];
+  if (item && item.children && item.children.length > 0) {
+    state.navStack.push({ label: item.label, items: item.children });
+    state.selectedIndex = 0;
+    state.searchQuery = '';
+    document.getElementById('globalSearch').value = '';
+    updateAll();
+  }
+}
+
+function navigateToRoot() {
+  state.navStack = [];
+  state.selectedIndex = 0;
+  updateAll();
+}
+
+function navigateTo(index) {
+  state.navStack = state.navStack.slice(0, index + 1);
+  state.selectedIndex = 0;
+  updateAll();
+}
+
+function goBack() {
+  if (state.navStack.length > 0) {
+    state.navStack.pop();
+    state.selectedIndex = 0;
+    updateAll();
+  }
+}
+
+function expandAll() {
+  // No-op in simulation—just a visual cue
+}
+
+function collapseAll() {
+  state.navStack = [];
+  state.selectedIndex = 0;
+  state.searchQuery = '';
+  document.getElementById('globalSearch').value = '';
+  updateAll();
+}
+
+function copyPrompt() {
+  const el = document.getElementById('promptBody');
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// KEYBOARD NAV
+// ═══════════════════════════════════════════════════
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const items = filteredItems();
+
+  switch(e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      state.selectedIndex = Math.min(state.selectedIndex + 1, items.length - 1);
+      renderContent();
+      updatePrompt();
+      scrollToSelected();
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      state.selectedIndex = Math.max(state.selectedIndex - 1, 0);
+      renderContent();
+      updatePrompt();
+      scrollToSelected();
+      break;
+    case 'Enter':
+    case 'ArrowRight':
+      e.preventDefault();
+      activateEntry(state.selectedIndex);
+      break;
+    case 'Backspace':
+    case 'ArrowLeft':
+      e.preventDefault();
+      goBack();
+      break;
+    case 'Tab':
+      e.preventDefault();
+      const tabs = Object.keys(MENU_DATA);
+      const ci = tabs.indexOf(state.activeTab);
+      const ni = e.shiftKey
+        ? (ci - 1 + tabs.length) % tabs.length
+        : (ci + 1) % tabs.length;
+      selectTab(tabs[ni]);
+      break;
+  }
+});
+
+function scrollToSelected() {
+  const el = document.querySelector('.content-entry.selected');
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// Search
+document.getElementById('globalSearch').addEventListener('input', (e) => {
+  state.searchQuery = e.target.value;
+  state.selectedIndex = 0;
+  renderContent();
+  updatePrompt();
+});
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('headerClock').textContent =
+    now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// Init
+updateAll();
+</script>
+</body>
+</html>
